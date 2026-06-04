@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Lista todos os contêineres do HormuzNet ativos
-CONTAINERS=$(docker ps --format "{{.Names}}" | grep -E "hormuznet_(broker|drone|sonar|meteo|radar|visual|boia)" || true)
+CONTAINERS=$(docker ps --format "{{.Names}}" | grep -E "hormuznet_(broker|drone|sonar|meteo|radar|visual|boia)|hormuzchain_vessel" || true)
 
 if [ -z "$CONTAINERS" ]; then
     echo -e "\e[1;31m[ERRO] Nenhum contêiner do HormuzNet está em execução neste computador.\e[0m"
