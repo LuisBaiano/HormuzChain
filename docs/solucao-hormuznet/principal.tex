@@ -1,0 +1,92 @@
+\documentclass[12pt]{article}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[brazil]{babel}
+\floatplacement{figure}{H}
+\floatplacement{table}{H}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+\usepackage[activate={true,nocompatibility},final,tracking=true,kerning=true,spacing=true]{microtype}
+
+\sloppy
+
+\title{HormuzNet: Monitoramento Marítimo Descentralizado e Resiliência em Sistemas Críticos}
+
+\author{Luis Felipe Pereira de Carvalho\inst{1}}
+
+\address{Departamento de Tecnologia -- Universidade Estadual de Feira de Santana (UEFS)\\
+  44036-900 -- Feira de Santana -- Bahia
+  \email{luisoftbr@outlook.com.br}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+[Context] Maritime monitoring of strategic routes demands distributed architectures
+capable of integrating heterogeneous sensors with high availability and no single
+point of failure. [Problem] Centralized architectures introduce a critical single
+point of failure: if the central server becomes inoperative, the entire monitoring
+and maritime rescue infrastructure is immediately disrupted. [Contribution] This
+work presents HormuzNet, a decentralized maritime monitoring system for the Strait
+of Hormuz that replaces the centralized model with an autonomous cooperative mesh
+of brokers, using Lamport's Logical Clocks for global event ordering and distributed
+mutual exclusion. [Methodology] The system was implemented in Go using native UDP
+Multicast for redundant telemetry, persistent TCP with fallback logic for drone
+coordination, and WebSocket for real-time tactical visualization. The infrastructure
+was validated in a containerized environment with 34 Docker containers distributed
+across two physical hosts. [Results] The architecture demonstrated effective
+elimination of single points of failure, automatic broker recovery, consistent
+mission dispatching with an average latency under 1.5 seconds, and correct Lamport
+clock synchronization under simultaneous load from 18 sensors.
+\end{abstract}
+
+\begin{resumo}
+\sloppy
+[Contexto] O monitoramento marítimo de rotas estratégicas exige arquiteturas
+distribuídas capazes de integrar sensores heterogêneos com alta disponibilidade
+e ausência de pontos únicos de falha. [Problema] Arquiteturas centralizadas
+introduzem um ponto único de falha crítico: se o servidor central torna-se
+inoperante, toda a infraestrutura de monitoramento e salvamento marítimo é
+imediatamente interrompida. [Contribuição] Este trabalho apresenta o HormuzNet,
+um sistema descentralizado de monitoramento marítimo para o Estreito de Ormuz que
+substitui o modelo centralizado por uma malha cooperativa autônoma de \textit{brokers},
+utilizando Relógios Lógicos de Lamport para ordenação global de eventos e exclusão
+mútua distribuída. [Metodologia] O sistema foi implementado em Go com UDP
+\textit{Multicast} nativo para telemetria redundante, TCP persistente com lógica de
+\textit{fallback} para coordenação de drones e WebSocket para visualização tática
+em tempo real. A infraestrutura foi validada em ambiente conteinerizado com 34
+contêineres Docker distribuídos em duas máquinas físicas. [Resultados] A arquitetura
+demonstrou eliminação efetiva de pontos únicos de falha, recuperação automática de
+\textit{brokers}, despacho consistente de missões com latência média inferior a 1,5
+segundos e sincronização correta dos relógios de Lamport mesmo sob carga
+simultânea de 18 sensores.
+\end{resumo}
+
+\section{Introdução}
+\label{sec:introducao}
+\input{introducao}
+
+\section{Fundamentação Teórica}
+\label{sec:fundamentos}
+\input{fundamentos}
+
+\section{Metodologia}
+\label{sec:metodologia}
+\input{metodologia}
+
+\section{Resultados}
+\label{sec:resultados}
+\input{resultados}
+
+\section{Conclusão}
+\label{sec:conclusao}
+\input{conclusao}
+
+\bibliographystyle{sbc}
+\bibliography{bibliografia}
+
+\end{document}

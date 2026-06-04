@@ -1,0 +1,21 @@
+A resiliência do HormuzNet apoia-se em quatro pilares teóricos: arquitetura distribuída descentralizada, protocolos de rede em camadas, concorrência gerenciada e algoritmos de coordenação lógica.
+
+\subsection{Arquiteturas Distribuídas e Modelos de Comunicação}
+
+Sistemas distribuídos organizam nós autônomos que cooperam por troca de mensagens \cite{tanenbaum2021redes}. O modelo cliente-servidor tradicional centraliza o processamento em um único ponto, o que introduz pontos únicos de falha e gargalos de desempenho; a descentralização P2P distribui responsabilidades entre os nós para obter maior tolerância a falhas e redundância \cite{tanenbaum2021redes}. O HormuzNet combina os dois modelos: sensores e drones operam como clientes dos \textit{brokers} de setor (camada 1), enquanto os \textit{brokers} formam entre si uma malha P2P cooperativa (camada 2).
+
+Os protocolos de rede foram selecionados com base no \textit{trade-off} entre confiabilidade e latência. O UDP (RFC~768 \cite{rfc768}) sobre IP (RFC~791 \cite{rfc791}) oferece entrega sem conexão e baixo \textit{overhead}, adequado para telemetria redundante via \textit{Multicast} (RFC~1112 \cite{rfc1112}), em que a perda eventual de um datagrama é tolerável diante do fluxo contínuo dos sensores. O TCP (RFC~793 \cite{rfc793}) fornece canal bidirecional confiável e com entrega ordenada, indispensável para mensagens de coordenação da malha (\textit{gossip}, Lamport, Bully) e comandos de despacho de drones. O WebSocket (RFC~6455 \cite{rfc6455}) acrescenta comunicação \textit{full-duplex} em tempo real sobre TCP, permitindo que o monitor tático receba atualizações instantâneas sem a necessidade de \textit{polling} HTTP.
+
+\subsection{Concorrência em Go e Estruturas de Dados Distribuídas}
+
+A linguagem Go implementa o modelo CSP (\textit{Communicating Sequential Processes}) \cite{donovan2015go}: \textit{goroutines} são \textit{threads} leves gerenciadas em espaço de usuário, enquanto canais proveem comunicação segura entre elas. Para acesso direto à memória compartilhada, \textit{mutexes} refinados por recurso (\texttt{dronesMu}, \texttt{ocorrenciasMu}) protegem regiões críticas sem introduzir gargalos globais. Filas de prioridade baseadas em \textit{heap} binário garantem que ocorrências críticas sejam atendidas primeiro; o algoritmo de \textit{aging} previne inanição ao incrementar gradualmente a prioridade de elementos que aguardam há muito tempo na fila.
+
+\subsection{Relógio Lógico de Lamport e Algoritmo Bully}
+
+Lamport \cite{lamport1978time} propôs \textit{timestamps} lógicos para ordenação total de eventos em sistemas distribuídos sem relógio físico global: cada processo mantém um contador inteiro incrementado a cada evento local e atualizado ao receber mensagens externas, preservando a relação de causalidade entre eventos. No HormuzNet, o relógio de Lamport é sincronizado a cada mensagem trocada na malha P2P, garantindo que ocorrências inseridas concorrentemente em \textit{brokers} distintos sejam ordenadas de forma global e determinística.
+
+Para a eleição do \textit{broker} líder, utiliza-se o Algoritmo Bully \cite{tanenbaum2021redes}: ao detectar a ausência de \textit{heartbeat} do coordenador, um nó envia \texttt{ELEICAO} a todos os \textit{brokers} com identificador superior; o nó de maior ID que responder torna-se o novo líder e anuncia sua posição à malha, garantindo convergência rápida mesmo em cenários de falha em cascata.
+
+\subsection{Docker e Emulação Distribuída}
+
+A tecnologia de contêineres Docker isola processos compartilhando o \textit{kernel} do sistema hospedeiro, proporcionando portabilidade e consistência de ambiente entre máquinas distintas. O Docker Compose permite definir topologias de múltiplos contêineres e suas redes virtuais em um único arquivo declarativo. No HormuzNet, essa tecnologia foi empregada para emular a topologia distribuída com 34 contêineres independentes em máquinas rodando Linux Ubuntu e Linux Mint.

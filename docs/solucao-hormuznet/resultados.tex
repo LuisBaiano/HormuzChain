@@ -1,0 +1,89 @@
+A avaliação prática da arquitetura proposta sob condições de falha e estresse fornece evidências sobre sua viabilidade e eficiência. Esta seção apresenta os resultados funcionais e de desempenho obtidos e estabelece um comparativo com a arquitetura do FarmNode.
+
+\subsection{Ambiente de Avaliação}
+\label{sub:ambiente_avaliacao}
+
+A validação experimental ocorreu por meio de cenários simulados de estresse e injeção de falhas no ambiente de contêineres descrito na Metodologia. A malha foi instanciada com 9 \textit{brokers}, 6 drones autônomos e 18 sensores georreferenciados. A avaliação distribuída envolveu a partição física do processamento entre duas máquinas interconectadas via LAN Gigabit no laboratório LARSID/UEFS, permitindo avaliar a latência de \textit{gossip} e o comportamento de sincronização sob rede física real.
+
+\subsection{Resultados Funcionais}
+\label{sub:resultados_funcionais}
+
+Os testes de comportamento funcional validaram as rotinas de \textit{failover}, eleição de líder e redundância de recepção de telemetria. A Tabela~\ref{tab:resiliencia} sumariza os principais cenários testados e as respostas correspondentes do sistema.
+
+\begin{table}[ht]
+  \centering
+  \sloppy
+  \caption{Resultados funcionais do sistema diante de falhas injetadas. Fonte: Próprio Autor.}
+  \label{tab:resiliencia}
+  \begin{tabular}{p{0.8cm}p{4.2cm}p{6.0cm}p{1.0cm}}
+    \toprule
+    \textbf{ID} & \textbf{Cenário de Falha} & \textbf{Resposta do Sistema} & \textbf{Status} \\
+    \midrule
+    TR-01 & Queda do \textit{Broker} B3 (Nordeste) & B2 assume o Setor Nordeste via \textit{Ring Failover}; drones executam \textit{fallback} & OK \\
+    TR-02 & Emissão de Alerta \textit{Multicast} & Recebido de forma redundante por todos os \textit{brokers} ativos & OK \\
+    TR-03 & Drone Abatido em Missão & \textit{Broker} detecta perda de \textit{socket} TCP, remove drone e re-enfileira ocorrência & OK \\
+    TR-04 & Conflito de \textit{Timestamps} & \textit{Brokers} ordenam ocorrências por prioridade e \textit{timestamp} de Lamport & OK \\
+    TR-05 & Queda do Líder B9 (Centro) & Seguidores detectam ausência de \textit{heartbeat} e realizam eleição Bully & OK \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Testes Automatizados}
+\label{sub:testes_automatizados}
+
+Testes unitários validaram a ordenação e o \textit{aging} do \textit{heap} de prioridades com inserção concorrente de chaves duplicadas. Testes de integração verificaram o \textit{pipeline} de serialização JSON em \textit{sockets} TCP/IP e a consistência dos relógios de Lamport sob carga massiva de \textit{goroutines}.
+
+\subsection{Carga e Desempenho}
+\label{sub:carga_desempenho}
+
+As métricas de latência e consumo de recursos foram coletadas durante uma sessão de estresse de 10 minutos, com geração de alertas na taxa de 1 evento a cada 2 segundos por sensor. A Tabela~\ref{tab:performance} consolida os resultados quantitativos observados.
+
+\begin{table}[ht]
+  \centering
+  \sloppy
+  \caption{Métricas de desempenho obtidas em teste de estresse contínuo. Fonte: Próprio Autor.}
+  \label{tab:performance}
+  \begin{tabular}{p{5.5cm}p{2.5cm}p{5.0cm}}
+    \toprule
+    \textbf{Métrica} & \textbf{Valor} & \textbf{Observação} \\
+    \midrule
+    Tempo de despacho médio (s) & 1,5 & Da ocorrência ao despacho do drone \\
+    Divergência de relógios de Lamport (ms) & 0 & Filas idênticas entre \textit{brokers} \\
+    Uso médio de CPU por \textit{broker} (\%) & $<$ 5\% & Concorrência via \textit{goroutines} \\
+    Uso médio de RAM por \textit{broker} (MB) & 12 & Inclui \textit{overhead} do \textit{heap} binário \\
+    Taxa de sucesso de missões (\%) & $\approx$\,90\% & Taxa fixa de 10\% de abates simulados \\
+    Latência de comunicação P2P (ms) & $<$ 10 & Média nas conexões da malha TCP/IP \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Comparação com FarmNode}
+\label{sub:comparacao_farmnode}
+
+A Tabela~\ref{tab:comparacao} estabelece uma comparação estrutural e funcional direta entre o FarmNode e o HormuzNet, evidenciando os avanços de robustez obtidos.
+
+\begin{table}[ht]
+  \centering
+  \sloppy
+  \caption{Comparação entre FarmNode (centralizado) e HormuzNet (descentralizado). Fonte: Próprio Autor.}
+  \label{tab:comparacao}
+  \begin{tabular}{p{3.8cm}p{4.8cm}p{4.8cm}}
+    \toprule
+    \textbf{Critério} & \textbf{FarmNode (P1)} & \textbf{HormuzNet (P2)} \\
+    \midrule
+    Topologia & \textit{Broker} único centralizado & Malha de N \textit{brokers} \\
+    Ponto único de falha & Existe & Eliminado (\textit{fallback} + \textit{heartbeat}) \\
+    Coordenação de recursos & Implícita (1 servidor decide) & Distribuída (cascata + fila local) \\
+    Fila de requisições & Local no \textit{broker} & Local + sincronização por \textit{broadcast} \\
+    Protocolo \textit{broker}$\leftrightarrow$\textit{broker} & Não existe & TCP/IP com JSON por linha \\
+    Detecção de falha & \textit{Timeout} de inatividade & \textit{Heartbeat} TCP 5\,s, \textit{timeout} 15\,s \\
+    Critério de despacho & Bateria disponível & Proximidade cartesiana \\
+    Dispositivos simulados & Sensores ambientais & Sensores marítimos + drones \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Discussão e Limitações}
+\label{sub:discussao_limitacoes}
+
+Os dados confirmam que o HormuzNet elimina pontos únicos de falha: a inoperância de \textit{brokers} de setor não interrompe o monitoramento tático, pois o \textit{Ring Failover} delega a responsabilidade geográfica ao nó herdeiro no anel lógico enquanto os drones migram via \textit{fallback} TCP/IP em segundos. A sincronização de Lamport impede despacho duplicado mesmo sob partição temporária de rede. Como principais limitações, destacam-se o crescimento quadrático do tráfego de \textit{broadcast} de filas com o número de \textit{brokers} e a dependência de roteamento IGMP para UDP \textit{Multicast}, que pode limitar a implantação em redes WAN sem tunelamento.

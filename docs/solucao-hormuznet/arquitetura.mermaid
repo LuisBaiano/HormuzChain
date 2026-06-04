@@ -1,0 +1,28 @@
+flowchart TD
+    classDef broker fill:#0b3a42,stroke:#00e87a,stroke-width:2px,color:#fff
+    classDef lider  fill:#0b3a42,stroke:#f5c518,stroke-width:3px,color:#f5c518
+    classDef sensor fill:#2b2b2b,stroke:#ffb800,stroke-width:1px,color:#fff
+    classDef drone  fill:#4a1e1e,stroke:#ff5555,stroke-width:2px,color:#fff
+    classDef view   fill:#1a3040,stroke:#00c2ff,stroke-width:2px,color:#fff
+
+    subgraph CAM1 ["Camada de Sensores"]
+        S["18 Sensores\n(2 por setor)"]:::sensor
+    end
+
+    subgraph CAM2 ["Camada de Brokers — Malha P2P TCP (6000–6008)"]
+        direction LR
+        B1["B1–B8\nSeguidores\n(Anel Ring Failover)"]:::broker
+        B9["★ B9 Líder\nCentro :6008\n(Eleição Bully)"]:::lider
+        B1 <-->|"TCP · Lamport · Heartbeat"| B9
+    end
+
+    subgraph CAM3 ["Camada de Atuação"]
+        D["6 Drones Autônomos\n(Fallback automático)"]:::drone
+    end
+
+    M[["Monitor Tático\nWebSocket :8085"]]:::view
+
+    S  -..->|"UDP Multicast 224.1.2.3:9876\n(todos os brokers ativos)"| CAM2
+    D  <===>|"TCP Persistente"| B1
+    B9 ==>|"WebSocket"| M
+    B1 ==>|"WebSocket"| M

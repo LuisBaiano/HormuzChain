@@ -1,0 +1,10 @@
+FROM golang:1.23-alpine AS builder
+WORKDIR /app
+COPY go.mod ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o vessel_exec ./cmd/vessel/
+
+FROM scratch
+COPY --from=builder /app/vessel_exec /vessel_exec
+ENTRYPOINT ["/vessel_exec"]

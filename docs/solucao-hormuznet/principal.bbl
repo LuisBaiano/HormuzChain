@@ -1,0 +1,43 @@
+\begin{thebibliography}{}
+
+\bibitem[Deering 1989]{rfc1112}
+Deering, S. (1989).
+\newblock Host extensions for ip multicasting.
+\newblock RFC 1112, RFC Editor.
+
+\bibitem[Donovan and Kernighan 2015]{donovan2015go}
+Donovan, A.~A. and Kernighan, B.~W. (2015).
+\newblock {\em The Go Programming Language}.
+\newblock Addison-Wesley Professional.
+
+\bibitem[Fette and Melnikov 2011]{rfc6455}
+Fette, I. and Melnikov, A. (2011).
+\newblock The websocket protocol.
+\newblock RFC 6455, RFC Editor.
+
+\bibitem[Institute 1981]{rfc793}
+Institute, I.~S. (1981).
+\newblock Transmission control protocol.
+\newblock RFC 793, RFC Editor.
+
+\bibitem[Lamport 1978]{lamport1978time}
+Lamport, L. (1978).
+\newblock Time, clocks, and the ordering of events in a distributed system.
+\newblock {\em Communications of the ACM}, 21(7):558--565.
+
+\bibitem[Postel 1980]{rfc768}
+Postel, J. (1980).
+\newblock User datagram protocol.
+\newblock RFC 768, RFC Editor.
+
+\bibitem[Postel 1981]{rfc791}
+Postel, J. (1981).
+\newblock Internet protocol.
+\newblock RFC 791, RFC Editor.
+
+\bibitem[Tanenbaum et~al. 2021]{tanenbaum2021redes}
+Tanenbaum, A.~S., Wetherall, D.~J., and Feamster, N. (2021).
+\newblock {\em Redes de Computadores}.
+\newblock Pearson.
+
+\end{thebibliography}

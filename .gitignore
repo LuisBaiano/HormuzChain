@@ -1,0 +1,23 @@
+# Compiled Go Binaries
+hormuz_cli
+code/broker_main
+code/drone_main
+code/monitor
+code/monitor_main
+code/sensor_main
+code/vessel_main
+*_exec
+
+# IDEs and Editors
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+
+# Go Modules
+# (We commit go.mod and go.sum, but generally not vendor)
+vendor/
+
+# Temporary data files
+chain.json
