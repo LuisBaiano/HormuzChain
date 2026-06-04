@@ -227,5 +227,5 @@ func sendKeepalive(vesselID string, x, y float64, brokerAPI string) {
 		return
 	}
 	resp.Body.Close()
-	log.Printf("[VESSEL %s] Keepalive sent: (%.1f, %.1f) - HTTP %d", vesselID, x, y, resp.StatusCode)
+	// Silenced keepalive to keep terminal clean for transactions
 }
