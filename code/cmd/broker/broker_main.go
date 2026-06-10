@@ -446,12 +446,15 @@ func (b *Broker) processarLeitura(dados []byte) {
 			}
 			b.vesselsMu.RUnlock()
 
-			// Calcula cotação do drone mais próximo
+			// Calcula cotação do drone mais próximo (com breakdown)
 			drone, found := b.droneMaisProximo(oc)
 			if found {
-				oc.CustoELIS = pricing.CalcularCusto(vesselPos, drone.Posicao)
+				custo := pricing.CalcularCustoDetalhado(vesselPos, drone.Posicao)
+				oc.CustoELIS = custo.Total
+				b.logger.Printf("[PRICING] Escolta=%.2f ELIS | Drone=%.2f ELIS | Total=%.2f ELIS (dist=%.1f)",
+					custo.EscortFee, custo.DroneFee, custo.Total, custo.Distancia)
 			} else {
-				oc.CustoELIS = 15.0 // fallback base cost
+				oc.CustoELIS = pricing.EscortBasePrice + pricing.DroneBasePrice // fallback sem distância
 			}
 			
 			b.ocorrenciasMu.Lock()
@@ -927,15 +930,21 @@ func (b *Broker) pagarOcorrencia(occID string, from string, sig string) (string,
 	brokerPubKey := blockchain.GetValidatorPubKey(b.id)
 	brokerAddr := wallet.GetAddress(brokerPubKey)
 
+	// Calcula breakdown: proporção escort vs drone baseada nas constantes de pricing
+	escortFrac := pricing.EscortBasePrice / (pricing.EscortBasePrice + pricing.DroneBasePrice)
+	escortFee  := occ.CustoELIS * escortFrac
+	droneFee   := occ.CustoELIS * (1 - escortFrac)
+
+	// ── Tx 1: Taxa de Serviço de Escolta ────────────────────────────────────
 	tx := models.Transaction{
 		Type:         models.TxTransfer,
 		From:         from,
 		To:           brokerAddr,
 		PublicKey:    pubKey,
-		Amount:       occ.CustoELIS,
+		Amount:       escortFee,
 		OccurrenceID: occID,
 		VesselID:     occ.VesselID,
-		Payload:      fmt.Sprintf("Pagamento Escolta Ocorrencia %s", occID),
+		Payload:      fmt.Sprintf("Taxa de coordenação/escolta da ocorrência %s", occID),
 		Timestamp:    time.Now(),
 		Signature:    sig,
 	}
@@ -944,7 +953,6 @@ func (b *Broker) pagarOcorrencia(occID string, from string, sig string) (string,
 	if err := b.blockchain.AddTxToMempool(tx); err != nil {
 		return "", err
 	}
-
 	b.broadcastVizinhos(models.MensagemBroker{
 		Tipo:        models.MsgTxBroadcast,
 		BrokerID:    b.id,
@@ -953,9 +961,68 @@ func (b *Broker) pagarOcorrencia(occID string, from string, sig string) (string,
 		LamportTime: b.tick(),
 	})
 
-	b.logger.Printf("[MEMPOOL] Transação de Pagamento %s de %.2f ELIS para Ocorrência %s adicionada por %s", tx.ID[:8], tx.Amount, occID, from[:8])
+	// ── Tx 2: Taxa de Uso do Drone ───────────────────────────────────────────
+	txDrone := models.Transaction{
+		Type:         models.TxDroneUsage,
+		From:         from,
+		To:           brokerAddr,
+		PublicKey:    pubKey,
+		Amount:       droneFee,
+		OccurrenceID: occID,
+		VesselID:     occ.VesselID,
+		Payload:      fmt.Sprintf("Uso de drone para escolta da ocorrência %s", occID),
+		Timestamp:    time.Now().Add(time.Millisecond),
+		Signature:    sig,
+	}
+	txDrone.ID = blockchain.HashTx(txDrone)
+
+	if err := b.blockchain.AddTxToMempool(txDrone); err != nil {
+		b.logger.Printf("[AVISO] Falha ao adicionar tx de uso de drone: %v", err)
+	} else {
+		b.broadcastVizinhos(models.MensagemBroker{
+			Tipo:        models.MsgTxBroadcast,
+			BrokerID:    b.id,
+			Transaction: &txDrone,
+			Timestamp:   time.Now(),
+			LamportTime: b.tick(),
+		})
+		b.logger.Printf("[DRONE USAGE] Tx %.2f ELIS (uso drone) para ocorrência %s", droneFee, occID)
+	}
+
+	// ── Tx 3: Taxa do Broker (5% sobre o total) ──────────────────────────────
+	feeAmount := occ.CustoELIS * models.BrokerFeePercent
+	txFee := models.Transaction{
+		Type:         models.TxBrokerFee,
+		From:         from,
+		To:           brokerAddr,
+		PublicKey:    pubKey,
+		Amount:       feeAmount,
+		OccurrenceID: occID,
+		VesselID:     occ.VesselID,
+		Payload:      fmt.Sprintf("Taxa de serviço do Broker %s (5%%) sobre total da ocorrência %s", b.id, occID),
+		Timestamp:    time.Now().Add(2 * time.Millisecond),
+		Signature:    sig,
+	}
+	txFee.ID = blockchain.HashTx(txFee)
+
+	if err := b.blockchain.AddTxToMempool(txFee); err != nil {
+		b.logger.Printf("[AVISO] Falha ao adicionar taxa de broker: %v", err)
+	} else {
+		b.broadcastVizinhos(models.MensagemBroker{
+			Tipo:        models.MsgTxBroadcast,
+			BrokerID:    b.id,
+			Transaction: &txFee,
+			Timestamp:   time.Now(),
+			LamportTime: b.tick(),
+		})
+		b.logger.Printf("[TAXA BROKER] Tx %.2f ELIS (5%%) para Broker %s | ocorrência %s", feeAmount, b.id, occID)
+	}
+
+	b.logger.Printf("[MEMPOOL] Pagamento registrado — Escolta=%.2f | Drone=%.2f | Taxa=%.2f | Total=%.2f ELIS | Ocorrência=%s",
+		escortFee, droneFee, feeAmount, occ.CustoELIS+feeAmount, occID)
 	return tx.ID, nil
 }
+
 
 func (b *Broker) loopConsensus() {
 	ticker := time.NewTicker(consensusInterval)

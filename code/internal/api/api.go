@@ -52,6 +52,9 @@ func StartAPI(
 	mux.HandleFunc("GET /occurrences/{addr}", server.handleOccurrencesACL)
 	mux.HandleFunc("GET /blockchain/blocks", server.handleBlocks)
 	mux.HandleFunc("GET /blockchain/mempool", server.handleMempool)
+	mux.HandleFunc("GET /blockchain/laudos", server.handleLaudos)
+	mux.HandleFunc("GET /blockchain/payments", server.handlePayments)
+	mux.HandleFunc("GET /blockchain/transactions", server.handleTransactions)
 
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil {
@@ -286,4 +289,34 @@ func (s *APIServer) handleBlocks(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) handleMempool(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.bc.GetMempool())
+}
+
+// handleTransactions — retorna todas as transações confirmadas em todos os blocos
+func (s *APIServer) handleTransactions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.bc.GetAllTransactions())
+}
+
+// handleLaudos — retorna laudos de missão.
+// Query param ?company=<addr> desbloqueia detalhes privados para essa empresa.
+func (s *APIServer) handleLaudos(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	companyAddr := r.URL.Query().Get("company")
+	laudos := s.bc.GetLaudos(companyAddr)
+	if laudos == nil {
+		laudos = []blockchain.LaudoInfo{}
+	}
+	json.NewEncoder(w).Encode(laudos)
+}
+
+// handlePayments — retorna histórico financeiro consolidado.
+// Query param ?company=<addr> desbloqueia payloads privados para essa empresa.
+func (s *APIServer) handlePayments(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	companyAddr := r.URL.Query().Get("company")
+	payments := s.bc.GetPaymentHistory(companyAddr)
+	if payments == nil {
+		payments = []blockchain.PaymentEntry{}
+	}
+	json.NewEncoder(w).Encode(payments)
 }

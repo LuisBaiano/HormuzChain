@@ -679,6 +679,8 @@ func main() {
 	http.HandleFunc("/api/explorer/blocks", handleExplorerBlocks)
 	http.HandleFunc("/api/explorer/mempool", handleExplorerMempool)
 	http.HandleFunc("/api/explorer/balances", handleExplorerBalances)
+	http.HandleFunc("/api/explorer/laudos", handleExplorerLaudos)
+	http.HandleFunc("/api/explorer/payments", handleExplorerPayments)
 
 	log.Printf("[MONITOR] Dashboard: http://localhost:%s", *porta)
 	log.Printf("[MONITOR] Observando brokers: %s", *brokersFlag)
@@ -1087,6 +1089,8 @@ body::before {
   <div class="tabs-container">
     <button id="btn-tab-tatico" class="tab-btn active" onclick="showTab('tatico')">📊 TÁTICO</button>
     <button id="btn-tab-explorer" class="tab-btn" onclick="showTab('explorer')">🔗 BLOCKCHAIN</button>
+    <button id="btn-tab-laudos" class="tab-btn" onclick="showTab('laudos')">📋 LAUDOS</button>
+    <button id="btn-tab-pagamentos" class="tab-btn" onclick="showTab('pagamentos')">💳 PAGAMENTOS</button>
   </div>
   <div class="header-stats">
     <div class="hstat" style="border-right: 1px solid var(--border); padding-right: 15px; margin-right: 5px;">
@@ -1215,6 +1219,65 @@ body::before {
     </div>
   </div>
 
+  <!-- ABA LAUDOS -->
+  <div id="conteudo-laudos" style="display:none; flex:1; overflow:hidden; flex-direction:column;">
+    <div style="padding:10px 14px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:center; flex-shrink:0">
+      <span style="font-size:.75rem; color:var(--textdim)">Filtrar por empresa (endereço 0x... para ver detalhes privados):</span>
+      <input id="laudos-company-filter" type="text" placeholder="0x..." style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 10px;font-family:monospace;font-size:.75rem;border-radius:3px;width:260px;">
+      <button onclick="updateLaudos()" style="background:var(--green3);border:1px solid var(--green);color:var(--green);padding:4px 12px;font-family:'Orbitron',sans-serif;font-size:.65rem;cursor:pointer;border-radius:3px;">FILTRAR</button>
+      <span id="laudos-count" style="color:var(--textdim);font-size:.7rem;margin-left:auto">0 laudos</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:12px">
+      <table style="width:100%;border-collapse:collapse;" id="laudos-table">
+        <thead>
+          <tr style="position:sticky;top:0;background:var(--bg3);">
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">OCORRÊNCIA</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">NAVIO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">EMPRESA</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">DRONE</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">ESCOLTA (ELIS)</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">DRONE (ELIS)</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">TAXA BROKER</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">LAUDO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--green);border-bottom:2px solid var(--border);">DATA</th>
+          </tr>
+        </thead>
+        <tbody id="laudos-body">
+          <tr><td colspan="9" style="text-align:center;color:var(--textdim);padding:30px">Nenhum laudo registrado ainda.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ABA PAGAMENTOS -->
+  <div id="conteudo-pagamentos" style="display:none; flex:1; overflow:hidden; flex-direction:column;">
+    <div style="padding:10px 14px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:center; flex-shrink:0">
+      <span style="font-size:.75rem; color:var(--textdim)">Filtrar por empresa (endereço 0x... para ver detalhes privados):</span>
+      <input id="pag-company-filter" type="text" placeholder="0x..." style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 10px;font-family:monospace;font-size:.75rem;border-radius:3px;width:260px;">
+      <button onclick="updatePagamentos()" style="background:var(--green3);border:1px solid var(--green);color:var(--green);padding:4px 12px;font-family:'Orbitron',sans-serif;font-size:.65rem;cursor:pointer;border-radius:3px;">FILTRAR</button>
+      <span id="pag-count" style="color:var(--textdim);font-size:.7rem;margin-left:auto">0 transações</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:12px">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="position:sticky;top:0;background:var(--bg3);">
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">TIPO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">DE</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">PARA</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">VALOR (ELIS)</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">NAVIO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">DESCRIÇÃO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">BLOCO</th>
+            <th style="text-align:left;padding:10px 8px;font-size:.7rem;color:var(--blue);border-bottom:2px solid var(--border);">DATA</th>
+          </tr>
+        </thead>
+        <tbody id="pag-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--textdim);padding:30px">Nenhuma transação registrada ainda.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div> <!-- Fim de main-container -->
 
 <script>
@@ -1225,15 +1288,19 @@ let currentTab = 'tatico';
 
 function showTab(tab) {
   currentTab = tab;
-  document.getElementById('btn-tab-tatico').className = 'tab-btn' + (tab === 'tatico' ? ' active' : '');
-  document.getElementById('btn-tab-explorer').className = 'tab-btn' + (tab === 'explorer' ? ' active' : '');
+  document.getElementById('btn-tab-tatico').className    = 'tab-btn' + (tab === 'tatico'    ? ' active' : '');
+  document.getElementById('btn-tab-explorer').className  = 'tab-btn' + (tab === 'explorer'  ? ' active' : '');
+  document.getElementById('btn-tab-laudos').className    = 'tab-btn' + (tab === 'laudos'    ? ' active' : '');
+  document.getElementById('btn-tab-pagamentos').className= 'tab-btn' + (tab === 'pagamentos'? ' active' : '');
 
-  document.getElementById('conteudo-tatico').style.display = tab === 'tatico' ? 'grid' : 'none';
-  document.getElementById('conteudo-explorer').style.display = tab === 'explorer' ? 'grid' : 'none';
+  document.getElementById('conteudo-tatico').style.display     = tab === 'tatico'    ? 'grid'  : 'none';
+  document.getElementById('conteudo-explorer').style.display   = tab === 'explorer'  ? 'grid'  : 'none';
+  document.getElementById('conteudo-laudos').style.display     = tab === 'laudos'    ? 'flex'  : 'none';
+  document.getElementById('conteudo-pagamentos').style.display = tab === 'pagamentos'? 'flex'  : 'none';
   
-  if (tab === 'explorer') {
-    updateExplorer();
-  }
+  if (tab === 'explorer') updateExplorer();
+  if (tab === 'laudos')   updateLaudos();
+  if (tab === 'pagamentos') updatePagamentos();
 }
 
 function formatTime(isoStr) {
@@ -1663,6 +1730,85 @@ async function updateExplorer() {
 }
 
 setInterval(updateExplorer, 2000);
+
+// ── Laudos ────────────────────────────────────────────────────────────────────
+async function updateLaudos() {
+  const companyAddr = document.getElementById('laudos-company-filter').value.trim();
+  let url = '/api/explorer/laudos';
+  if (companyAddr) url += '?company=' + encodeURIComponent(companyAddr);
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) { console.error('Laudos fetch error'); return; }
+    const laudos = await resp.json();
+    document.getElementById('laudos-count').textContent = (laudos ? laudos.length : 0) + ' laudo(s)';
+    const tbody = document.getElementById('laudos-body');
+    if (!laudos || laudos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--textdim);padding:30px">Nenhum laudo registrado ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = laudos.slice().reverse().map(l => {
+      const isPrivate = l.payload && l.payload.startsWith('[CONFIDENCIAL');
+      const payloadHtml = isPrivate
+        ? '<span style="color:var(--red);font-size:.65rem">🔒 CONFIDENCIAL</span>'
+        : '<span style="color:var(--green);font-size:.65rem" title="' + l.payload + '">' + (l.payload ? l.payload.slice(0,60) + (l.payload.length > 60 ? '...' : '') : '-') + '</span>';
+      const escoltaStr = l.escort_amount ? l.escort_amount.toFixed(2) + ' ELIS' : '-';
+      const droneStr   = l.drone_fee     ? l.drone_fee.toFixed(2) + ' ELIS' : '-';
+      const taxaStr    = l.broker_fee    ? '<span style="color:var(--amber)">' + l.broker_fee.toFixed(2) + ' ELIS</span>' : '-';
+      return '<tr style="border-bottom:1px solid rgba(30,58,79,.4);">' +
+        '<td style="padding:8px;font-size:.68rem;font-family:monospace;color:var(--textdim)" title="' + l.occurrence_id + '">' + (l.occurrence_id ? l.occurrence_id.slice(0,18)+'...' : '-') + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;color:var(--blue)">' + (l.vessel_id || '-') + '</td>' +
+        '<td style="padding:8px;font-size:.65rem;font-family:monospace;color:var(--textdim)" title="' + l.company_addr + '">' + (l.company_addr ? l.company_addr.slice(0,14)+'...' : '-') + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;color:var(--green)">' + (l.drone_id || '-') + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;font-family:\'Orbitron\',sans-serif;font-weight:bold;color:var(--amber)">' + escoltaStr + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;font-family:\'Orbitron\',sans-serif;font-weight:bold;color:var(--purple)">' + droneStr + '</td>' +
+        '<td style="padding:8px;font-size:.72rem">' + taxaStr + '</td>' +
+        '<td style="padding:8px;font-size:.7rem">' + payloadHtml + '</td>' +
+        '<td style="padding:8px;font-size:.65rem;color:var(--textdim)">' + (l.timestamp ? new Date(l.timestamp).toLocaleString('pt-BR') : '-') + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar laudos:', err);
+  }
+}
+
+// ── Pagamentos ────────────────────────────────────────────────────────────────
+async function updatePagamentos() {
+  const companyAddr = document.getElementById('pag-company-filter').value.trim();
+  let url = '/api/explorer/payments';
+  if (companyAddr) url += '?company=' + encodeURIComponent(companyAddr);
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) { console.error('Payments fetch error'); return; }
+    const payments = await resp.json();
+    document.getElementById('pag-count').textContent = (payments ? payments.length : 0) + ' transação(es)';
+    const tbody = document.getElementById('pag-body');
+    if (!payments || payments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--textdim);padding:30px">Nenhuma transação registrada ainda.</td></tr>';
+      return;
+    }
+    const typeColors = { 'MINT': 'var(--green)', 'TRANSFER': 'var(--amber)', 'BROKER_FEE': '#ff8c00', 'VESSEL_REG': '#cc66ff', 'MISSION_LOG': 'var(--blue)' };
+    tbody.innerHTML = payments.slice().reverse().map(p => {
+      const color = typeColors[p.type] || 'var(--textdim)';
+      const badge = '<span class="badge" style="background:rgba(255,255,255,.07);color:' + color + ';font-size:.6rem">' + p.type + '</span>';
+      const isPrivate = p.payload && p.payload === '[PRIVADO]';
+      const payloadHtml = isPrivate
+        ? '<span style="color:var(--red);font-size:.65rem">🔒 PRIVADO</span>'
+        : '<span style="font-size:.65rem;color:var(--textdim)" title="' + (p.payload||'') + '">' + (p.payload ? p.payload.slice(0,50) + (p.payload.length > 50 ? '...' : '') : '-') + '</span>';
+      return '<tr style="border-bottom:1px solid rgba(30,58,79,.4);">' +
+        '<td style="padding:8px">' + badge + '</td>' +
+        '<td style="padding:8px;font-size:.65rem;font-family:monospace;color:var(--textdim)" title="' + (p.from||'') + '">' + (p.from ? p.from.slice(0,14)+'...' : '-') + '</td>' +
+        '<td style="padding:8px;font-size:.65rem;font-family:monospace;color:var(--textdim)" title="' + (p.to||'') + '">' + (p.to ? p.to.slice(0,14)+'...' : '-') + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;font-family:\'Orbitron\',sans-serif;font-weight:bold;color:' + color + '">' + (p.amount ? p.amount.toFixed(2) : '0.00') + '</td>' +
+        '<td style="padding:8px;font-size:.72rem;color:var(--blue)">' + (p.vessel_id || '-') + '</td>' +
+        '<td style="padding:8px">' + payloadHtml + '</td>' +
+        '<td style="padding:8px;font-size:.7rem;color:var(--green)">#' + (p.block_index !== undefined ? p.block_index : '-') + '</td>' +
+        '<td style="padding:8px;font-size:.65rem;color:var(--textdim)">' + (p.timestamp ? new Date(p.timestamp).toLocaleString('pt-BR') : '-') + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar pagamentos:', err);
+  }
+}
 </script>
 </body>
 </html>`
@@ -1862,6 +2008,49 @@ func handleExplorerBalances(w http.ResponseWriter, r *http.Request) {
 }
 
 // ── HTML do Explorer ──────────────────────────────────────────────────────────
+
+// handleExplorerLaudos: proxy para /blockchain/laudos do broker mais disponível
+func handleExplorerLaudos(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	apiURL := obterLiderAPIUrl()
+	if apiURL == "" {
+		w.Write([]byte("[]"))
+		return
+	}
+	targetURL := apiURL + "/blockchain/laudos"
+	if company := r.URL.Query().Get("company"); company != "" {
+		targetURL += "?company=" + company
+	}
+	resp, err := http.Get(targetURL)
+	if err != nil {
+		w.Write([]byte("[]"))
+		return
+	}
+	defer resp.Body.Close()
+	io.Copy(w, resp.Body)
+}
+
+// handleExplorerPayments: proxy para /blockchain/payments do broker mais disponível
+func handleExplorerPayments(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	apiURL := obterLiderAPIUrl()
+	if apiURL == "" {
+		w.Write([]byte("[]"))
+		return
+	}
+	targetURL := apiURL + "/blockchain/payments"
+	if company := r.URL.Query().Get("company"); company != "" {
+		targetURL += "?company=" + company
+	}
+	resp, err := http.Get(targetURL)
+	if err != nil {
+		w.Write([]byte("[]"))
+		return
+	}
+	defer resp.Body.Close()
+	io.Copy(w, resp.Body)
+}
+
 
 const explorerHTML = `<!DOCTYPE html>
 <html lang="pt-BR">

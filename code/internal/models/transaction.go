@@ -9,9 +9,13 @@ const (
 	TxRegister   TxType = "REGISTER"    // Registro de empresa
 	TxVesselReg  TxType = "VESSEL_REG"  // Registro de navio
 	TxVesselLost TxType = "VESSEL_LOST" // Navio perdido
-	TxTransfer   TxType = "TRANSFER"    // Pagamento de escolta
+	TxTransfer   TxType = "TRANSFER"    // Taxa de serviço de escolta (coordenação)
+	TxDroneUsage TxType = "DRONE_USAGE" // Taxa de uso do drone (hardware + deslocamento)
 	TxMissionLog TxType = "MISSION_LOG" // Laudo da missão
+	TxBrokerFee  TxType = "BROKER_FEE"  // Taxa do broker (5% sobre total)
 )
+
+const BrokerFeePercent = 0.05 // 5%
 
 type Transaction struct {
 	ID           string    `json:"id"`

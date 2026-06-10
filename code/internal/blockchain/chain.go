@@ -199,8 +199,16 @@ func (bc *Blockchain) applyTx(tx models.Transaction) {
 	case models.TxTransfer:
 		bc.Balances[tx.From] -= tx.Amount
 		bc.Balances[tx.To] += tx.Amount
+	case models.TxDroneUsage:
+		// Taxa de uso do drone: deduz da empresa, credita ao broker operador
+		bc.Balances[tx.From] -= tx.Amount
+		bc.Balances[tx.To] += tx.Amount
+	case models.TxBrokerFee:
+		// Taxa do broker: deduz da empresa, credita ao broker validador
+		bc.Balances[tx.From] -= tx.Amount
+		bc.Balances[tx.To] += tx.Amount
 	case models.TxMissionLog:
-		// Mission logs are informational and immutable on-chain, but don't change state balances directly
+		// Mission logs são informativos e imutáveis on-chain
 	}
 }
 
@@ -399,4 +407,169 @@ func (bc *Blockchain) ReplaceChain(blocks []models.Block) {
 	defer bc.mu.Unlock()
 	bc.Blocks = blocks
 	bc.RebuildState()
+}
+
+// GetAllTransactions retorna todas as transações confirmadas em todos os blocos.
+func (bc *Blockchain) GetAllTransactions() []models.Transaction {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	var txs []models.Transaction
+	for _, block := range bc.Blocks {
+		txs = append(txs, block.Transactions...)
+	}
+	return txs
+}
+
+// LaudoInfo representa um laudo de missão consolidado (visão pública + detalhes privados).
+type LaudoInfo struct {
+	OccurrenceID  string  `json:"occurrence_id"`
+	VesselID      string  `json:"vessel_id"`        // Sempre visível (público)
+	DroneID       string  `json:"drone_id"`
+	CompanyAddr   string  `json:"company_addr"`     // Endereço (público)
+	EscortAmount  float64 `json:"escort_amount"`    // Taxa de serviço de escolta (público)
+	DroneFee      float64 `json:"drone_fee"`        // Taxa de uso do drone (público)
+	BrokerFee     float64 `json:"broker_fee"`       // Taxa do broker 5% (público)
+	BrokerAddr    string  `json:"broker_addr"`      // Broker que processou (público)
+	Payload       string  `json:"payload"`          // Detalhes — privado, só a empresa vê
+	PayTxID       string  `json:"pay_tx_id"`        // ID da tx de pagamento
+	LogTxID       string  `json:"log_tx_id"`        // ID da tx de laudo
+	Timestamp     string  `json:"timestamp"`
+}
+
+// GetLaudos retorna todos os laudos de missão (TxMissionLog) com dados consolidados.
+// companyAddr: se não vazio, revela os detalhes privados apenas para essa empresa.
+func (bc *Blockchain) GetLaudos(companyAddr string) []LaudoInfo {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
+	// Indexa pagamentos por OccurrenceID
+	type payData struct {
+		amount    float64
+		brokerFee float64
+		brokerAddr string
+		from      string
+		txID      string
+	}
+	payments  := make(map[string]payData)
+	feeTxs    := make(map[string]payData) // TxBrokerFee keyed by occurrence_id
+	droneTxs  := make(map[string]payData) // TxDroneUsage keyed by occurrence_id
+
+	var laudos []LaudoInfo
+	var logTxs []models.Transaction
+
+	for _, block := range bc.Blocks {
+		for _, tx := range block.Transactions {
+			switch tx.Type {
+			case models.TxTransfer:
+				if tx.OccurrenceID != "" {
+					payments[tx.OccurrenceID] = payData{
+						amount:     tx.Amount,
+						brokerAddr: tx.To,
+						from:       tx.From,
+						txID:       tx.ID,
+					}
+				}
+			case models.TxDroneUsage:
+				if tx.OccurrenceID != "" {
+					droneTxs[tx.OccurrenceID] = payData{
+						amount:     tx.Amount,
+						brokerAddr: tx.To,
+						from:       tx.From,
+						txID:       tx.ID,
+					}
+				}
+			case models.TxBrokerFee:
+				if tx.OccurrenceID != "" {
+					feeTxs[tx.OccurrenceID] = payData{
+						amount:     tx.Amount,
+						brokerAddr: tx.To,
+						from:       tx.From,
+						txID:       tx.ID,
+					}
+				}
+			case models.TxMissionLog:
+				logTxs = append(logTxs, tx)
+			}
+		}
+	}
+
+	for _, tx := range logTxs {
+		pay   := payments[tx.OccurrenceID]
+		fee   := feeTxs[tx.OccurrenceID]
+		drone := droneTxs[tx.OccurrenceID]
+
+		// Payload privado: só a empresa solicitante vê
+		payloadVis := "[CONFIDENCIAL — ACESSO RESTRITO AO CONTRATANTE]"
+		isOwner := companyAddr != "" && companyAddr == pay.from
+		if isOwner {
+			payloadVis = tx.Payload
+		}
+
+		laudo := LaudoInfo{
+			OccurrenceID: tx.OccurrenceID,
+			VesselID:     tx.VesselID,
+			DroneID:      tx.DroneID,
+			CompanyAddr:  pay.from,
+			EscortAmount: pay.amount,
+			DroneFee:     drone.amount,
+			BrokerFee:    fee.amount,
+			BrokerAddr:   pay.brokerAddr,
+			Payload:      payloadVis,
+			PayTxID:      pay.txID,
+			LogTxID:      tx.ID,
+			Timestamp:    tx.Timestamp.Format("2006-01-02T15:04:05Z07:00"),
+		}
+		laudos = append(laudos, laudo)
+	}
+	return laudos
+}
+
+// PaymentEntry representa uma entrada no histórico financeiro consolidado.
+type PaymentEntry struct {
+	TxID         string  `json:"tx_id"`
+	Type         string  `json:"type"`
+	From         string  `json:"from"`
+	To           string  `json:"to"`
+	Amount       float64 `json:"amount"`
+	OccurrenceID string  `json:"occurrence_id"`
+	VesselID     string  `json:"vessel_id"`
+	// Payload privado: só visível para a empresa envolvida
+	Payload      string  `json:"payload"`
+	Timestamp    string  `json:"timestamp"`
+	BlockIndex   int     `json:"block_index"`
+}
+
+// GetPaymentHistory retorna o histórico de pagamentos consolidado.
+// companyAddr: se não vazio, revela payloads privados apenas para essa empresa.
+func (bc *Blockchain) GetPaymentHistory(companyAddr string) []PaymentEntry {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
+	var entries []PaymentEntry
+	for _, block := range bc.Blocks {
+		for _, tx := range block.Transactions {
+			switch tx.Type {
+			case models.TxTransfer, models.TxDroneUsage, models.TxBrokerFee, models.TxMint:
+				payloadVis := "[PRIVADO]"
+				isInvolved := companyAddr != "" &&
+					(tx.From == companyAddr || tx.To == companyAddr)
+				if isInvolved || tx.Type == models.TxMint {
+					payloadVis = tx.Payload
+				}
+				entries = append(entries, PaymentEntry{
+					TxID:         tx.ID,
+					Type:         string(tx.Type),
+					From:         tx.From,
+					To:           tx.To,
+					Amount:       tx.Amount,
+					OccurrenceID: tx.OccurrenceID,
+					VesselID:     tx.VesselID,
+					Payload:      payloadVis,
+					Timestamp:    tx.Timestamp.Format("2006-01-02T15:04:05Z07:00"),
+					BlockIndex:   block.Index,
+				})
+			}
+		}
+	}
+	return entries
 }
