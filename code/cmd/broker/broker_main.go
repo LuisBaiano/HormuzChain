@@ -2016,7 +2016,7 @@ func (b *Broker) loopReposicaoPeriodica() {
 	// Let's check environment variable "ENABLE_TOKEN_REPLENISHMENT"
 	// Default to false if not set, or if it is "false"
 	
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -2028,11 +2028,11 @@ func (b *Broker) loopReposicaoPeriodica() {
 		b.logger.Printf("[REPOSIÇÃO] Executando reposição periódica de tokens para empresas registradas...")
 		compAddrs := b.blockchain.GetCompanyAddresses()
 		for _, addr := range compAddrs {
-			// Mint 500 ELIS
+			// Mint 50 ELIS
 			tx := models.Transaction{
 				Type:      models.TxMint,
 				To:        addr,
-				Amount:    500.0,
+				Amount:    50.0,
 				Payload:   "Reabastecimento Periódico de Tokens",
 				Timestamp: time.Now(),
 			}

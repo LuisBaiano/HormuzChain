@@ -49,11 +49,12 @@ PC_ID=$OPTION
 if [ "$PC_ID" -eq 1 ]; then
     LIDER_IP="127.0.0.1"
 else
-    read -p "Digite o IP do Computador Líder (PC 1): " LIDER_IP
-    if [ -z "$LIDER_IP" ]; then
-        echo -e "${RED}[ERRO] O IP do Líder é obrigatório para os seguidores!${RESET}"
+    read -p "Digite o último octeto (X) do IP do Líder (172.16.103.X): " LIDER_X
+    if [ -z "$LIDER_X" ]; then
+        echo -e "${RED}[ERRO] O final do IP (X) do Líder é obrigatório!${RESET}"
         exit 1
     fi
+    LIDER_IP="172.16.103.$LIDER_X"
 fi
 
 echo -e "\n${YELLOW}=> Gerando configuração docker-compose-dist.yml para o PC $PC_ID...${RESET}"
@@ -318,12 +319,18 @@ $DOCKER_COMPOSE -f docker-compose-dist.yml up --build -d
 echo -e "\n${GREEN}[SUCESSO] Simulação iniciada para este PC!${RESET}"
 
 if [ "$PC_ID" -eq 1 ]; then
+    X_VAL="X"
+    if [[ "$LOCAL_IP" =~ ^172\.16\.103\.([0-9]+)$ ]]; then
+        X_VAL="${BASH_REMATCH[1]}"
+    fi
     echo -e "--------------------------------------------------------"
     echo -e "  PC 1 (LÍDER) iniciado com sucesso!"
     echo -e "  Dashboard: http://localhost:8085"
     echo -e "  Explorer:  http://localhost:8086"
-    echo -e "  IP do Líder para usar nos outros computadores:"
-    echo -e "  ${YELLOW}${LOCAL_IP}${RESET}"
+    echo -e "  IP do Líder para os outros PCs: ${YELLOW}${LOCAL_IP}${RESET}"
+    if [ "$X_VAL" != "X" ]; then
+        echo -e "  Valor de X para digitar nos outros PCs: ${GREEN}${X_VAL}${RESET}"
+    fi
     echo -e "--------------------------------------------------------"
 else
     echo -e "--------------------------------------------------------"

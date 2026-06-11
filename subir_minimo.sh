@@ -120,9 +120,57 @@ services:
       X: '150'
       Y: '750'
     restart: on-failure
+
+  vessel_2:
+    build:
+      context: ./code
+      dockerfile: Dockerfile.vessel
+    container_name: hormuzchain_vessel_maersk_02
+    network_mode: host
+    environment:
+      VESSEL_ID: vessel_maersk_02
+      COMPANY_NAME: Maersk
+      COMPANY_ADDR: '0x280f33adb69caa3e5c8c'
+      COMPANY_PRIV_KEY: 9bfb94f11c9b617fb14a2452f0e243759147ef9eb8bf60d7121787d4504eafa4
+      BROKER_API: http://localhost:7000
+      X: '250'
+      Y: '800'
+    restart: on-failure
+
+  vessel_3:
+    build:
+      context: ./code
+      dockerfile: Dockerfile.vessel
+    container_name: hormuzchain_vessel_msc_01
+    network_mode: host
+    environment:
+      VESSEL_ID: vessel_msc_01
+      COMPANY_NAME: MSC
+      COMPANY_ADDR: '0x2a9621c924cf329f550a'
+      COMPANY_PRIV_KEY: cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20
+      BROKER_API: http://localhost:7001
+      X: '650'
+      Y: '750'
+    restart: on-failure
+
+  vessel_4:
+    build:
+      context: ./code
+      dockerfile: Dockerfile.vessel
+    container_name: hormuzchain_vessel_cma_cgm_01
+    network_mode: host
+    environment:
+      VESSEL_ID: vessel_cma_cgm_01
+      COMPANY_NAME: CMA_CGM
+      COMPANY_ADDR: '0x7daccdb0e3eb3ce3d768'
+      COMPANY_PRIV_KEY: 682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7
+      BROKER_API: http://localhost:7002
+      X: '150'
+      Y: '250'
+    restart: on-failure
 EOF
 
-echo -e "\e[1;32m=> Compilando e iniciando contêineres mínimos (7 contêineres total)...\e[0m"
+echo -e "\e[1;32m=> Compilando e iniciando contêineres mínimos (10 contêineres total)...\e[0m"
 $DOCKER_COMPOSE -f docker-compose-minimal.yml up -d --build
 
 echo -e "\n\e[1;32m[SUCESSO] Simulação MÍNIMA iniciada!\e[0m"
