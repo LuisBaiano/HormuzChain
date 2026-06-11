@@ -1708,7 +1708,7 @@ async function updateExplorer() {
         txsHTML = '<div style="color:var(--textdim);font-size:.65rem">Nenhuma transação no bloco.</div>';
       }
 
-      const votesCount = b.signatures ? Object.keys(b.signatures).length : 0;
+      const votesCount = b.signature ? b.signature.split(';').filter(x => x).length : 0;
       const consensusLabel = b.index === 0 ? 'GENESIS BLOCK' : votesCount + ' Assinaturas Validadoras (PoA)';
 
       return '<div class="block-card">' +
@@ -2440,7 +2440,7 @@ async function updateData() {
         txsHTML = '<div style="color:var(--textdim);font-size:.65rem">Nenhuma transação no bloco.</div>';
       }
 
-      const votesCount = b.signatures ? Object.keys(b.signatures).length : 0;
+      const votesCount = b.signature ? b.signature.split(';').filter(x => x).length : 0;
       const consensusLabel = b.index === 0 ? 'GENESIS BLOCK' : votesCount + ' Assinaturas Validadoras (PoA)';
 
       return '<div class="block-card">' +
