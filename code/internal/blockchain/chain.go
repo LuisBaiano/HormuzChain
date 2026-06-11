@@ -292,8 +292,8 @@ func (bc *Blockchain) AddTxToMempool(tx models.Transaction) error {
 		}
 	}
 
-	// 4. Verify Balance (if TRANSFER)
-	if tx.Type == models.TxTransfer {
+	// 4. Verify Balance (if TRANSFER, DRONE_USAGE, or BROKER_FEE)
+	if tx.Type == models.TxTransfer || tx.Type == models.TxDroneUsage || tx.Type == models.TxBrokerFee {
 		// Calculate pending spent amount in mempool
 		pendingSpent := 0.0
 		for _, mTx := range bc.Mempool {
@@ -331,10 +331,81 @@ func (bc *Blockchain) AddTxToMempool(tx models.Transaction) error {
 	return nil
 }
 
+// ValidateBlockTransactions checks if all transactions in a block are valid (signatures, balances, registrations) in a thread-safe way.
+func (bc *Blockchain) ValidateBlockTransactions(b models.Block) error {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	return bc.validateBlockTransactionsNoLock(b)
+}
+
+func (bc *Blockchain) validateBlockTransactionsNoLock(b models.Block) error {
+	tempBalances := make(map[string]float64)
+	for addr, bal := range bc.Balances {
+		tempBalances[addr] = bal
+	}
+
+	tempCompanies := make(map[string]string)
+	for addr, name := range bc.Companies {
+		tempCompanies[addr] = name
+	}
+
+	tempVessels := make(map[string]string)
+	for vesselID, owner := range bc.Vessels {
+		tempVessels[vesselID] = owner
+	}
+
+	for _, tx := range b.Transactions {
+		// 1. Verify Signature (if not MINT)
+		if tx.Type != models.TxMint {
+			if !VerifyTxSignature(tx) {
+				return fmt.Errorf("invalid signature for transaction %s", tx.ID)
+			}
+			derivedAddr := wallet.GetAddress(tx.PublicKey)
+			if tx.From != derivedAddr {
+				return fmt.Errorf("from address does not match public key in transaction %s", tx.ID)
+			}
+		}
+
+		// 2. Validate balances for debit types
+		switch tx.Type {
+		case models.TxTransfer, models.TxDroneUsage, models.TxBrokerFee:
+			if tempBalances[tx.From] < tx.Amount {
+				return fmt.Errorf("insufficient balance for transaction %s (sender: %s, balance: %.2f, amount: %.2f)",
+					tx.ID, tx.From, tempBalances[tx.From], tx.Amount)
+			}
+			tempBalances[tx.From] -= tx.Amount
+			tempBalances[tx.To] += tx.Amount
+		case models.TxMint:
+			tempBalances[tx.To] += tx.Amount
+		case models.TxRegister:
+			if tx.Payload == "" {
+				return fmt.Errorf("company registration payload must contain company name in transaction %s", tx.ID)
+			}
+			tempCompanies[tx.From] = tx.Payload
+		case models.TxVesselReg:
+			if tx.VesselID == "" {
+				return fmt.Errorf("vessel registration must specify VesselID in transaction %s", tx.ID)
+			}
+			if _, exists := tempCompanies[tx.From]; !exists {
+				return fmt.Errorf("company must be registered before registering vessel %s in transaction %s", tx.VesselID, tx.ID)
+			}
+			tempVessels[tx.VesselID] = tx.From
+		case models.TxVesselLost:
+			delete(tempVessels, tx.VesselID)
+		}
+	}
+	return nil
+}
+
 // AddBlock validates and appends a block to the chain, clearing matching transactions from the mempool.
 func (bc *Blockchain) AddBlock(b models.Block) error {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
+
+	// Validate transactions inside block (Dry-run isolation check)
+	if err := bc.validateBlockTransactionsNoLock(b); err != nil {
+		return fmt.Errorf("block transactions validation failed: %w", err)
+	}
 
 	// 1. Validate index and prevHash
 	latestBlock := bc.Blocks[len(bc.Blocks)-1]
@@ -500,7 +571,7 @@ func (bc *Blockchain) GetLaudos(companyAddr string) []LaudoInfo {
 
 		// Payload privado: só a empresa solicitante vê
 		payloadVis := "[CONFIDENCIAL — ACESSO RESTRITO AO CONTRATANTE]"
-		isOwner := companyAddr != "" && companyAddr == pay.from
+		isOwner := (companyAddr != "" && companyAddr == pay.from) || companyAddr == "1234"
 		if isOwner {
 			payloadVis = tx.Payload
 		}
@@ -551,8 +622,7 @@ func (bc *Blockchain) GetPaymentHistory(companyAddr string) []PaymentEntry {
 			switch tx.Type {
 			case models.TxTransfer, models.TxDroneUsage, models.TxBrokerFee, models.TxMint:
 				payloadVis := "[PRIVADO]"
-				isInvolved := companyAddr != "" &&
-					(tx.From == companyAddr || tx.To == companyAddr)
+				isInvolved := (companyAddr != "" && (tx.From == companyAddr || tx.To == companyAddr)) || companyAddr == "1234"
 				if isInvolved || tx.Type == models.TxMint {
 					payloadVis = tx.Payload
 				}

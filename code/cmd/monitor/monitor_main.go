@@ -1729,8 +1729,6 @@ async function updateExplorer() {
   }
 }
 
-setInterval(updateExplorer, 2000);
-
 // ── Laudos ────────────────────────────────────────────────────────────────────
 async function updateLaudos() {
   const companyAddr = document.getElementById('laudos-company-filter').value.trim();
@@ -1749,7 +1747,7 @@ async function updateLaudos() {
     tbody.innerHTML = laudos.slice().reverse().map(l => {
       const isPrivate = l.payload && l.payload.startsWith('[CONFIDENCIAL');
       const payloadHtml = isPrivate
-        ? '<span style="color:var(--red);font-size:.65rem">🔒 CONFIDENCIAL</span>'
+        ? '<span style="color:var(--red);font-size:.65rem;cursor:pointer;text-decoration:underline;" onclick="revelarLaudo(\'' + l.occurrence_id + '\')">🔒 CONFIDENCIAL (clique)</span>'
         : '<span style="color:var(--green);font-size:.65rem" title="' + l.payload + '">' + (l.payload ? l.payload.slice(0,60) + (l.payload.length > 60 ? '...' : '') : '-') + '</span>';
       const escoltaStr = l.escort_amount ? l.escort_amount.toFixed(2) + ' ELIS' : '-';
       const droneStr   = l.drone_fee     ? l.drone_fee.toFixed(2) + ' ELIS' : '-';
@@ -1792,7 +1790,7 @@ async function updatePagamentos() {
       const badge = '<span class="badge" style="background:rgba(255,255,255,.07);color:' + color + ';font-size:.6rem">' + p.type + '</span>';
       const isPrivate = p.payload && p.payload === '[PRIVADO]';
       const payloadHtml = isPrivate
-        ? '<span style="color:var(--red);font-size:.65rem">🔒 PRIVADO</span>'
+        ? '<span style="color:var(--red);font-size:.65rem;cursor:pointer;text-decoration:underline;" onclick="revelarPagamento(\'' + p.tx_id + '\')">🔒 PRIVADO (clique)</span>'
         : '<span style="font-size:.65rem;color:var(--textdim)" title="' + (p.payload||'') + '">' + (p.payload ? p.payload.slice(0,50) + (p.payload.length > 50 ? '...' : '') : '-') + '</span>';
       return '<tr style="border-bottom:1px solid rgba(30,58,79,.4);">' +
         '<td style="padding:8px">' + badge + '</td>' +
@@ -1809,6 +1807,53 @@ async function updatePagamentos() {
     console.error('Erro ao carregar pagamentos:', err);
   }
 }
+
+async function revelarLaudo(occurrenceID) {
+  const pwd = prompt("Digite a senha de simulação (1234) ou o endereço 0x da empresa contratante para descriptografar:");
+  if (!pwd) return;
+  try {
+    const resp = await fetch('/api/explorer/laudos?company=' + encodeURIComponent(pwd));
+    if (!resp.ok) { alert('Acesso negado!'); return; }
+    const laudos = await resp.json();
+    const found = laudos.find(x => x.occurrence_id === occurrenceID);
+    if (found && !found.payload.startsWith('[CONFIDENCIAL')) {
+      alert("🔓 LAUDO DESCRIPTOGRAFADO ON-CHAIN:\n\n" + found.payload);
+      document.getElementById('laudos-company-filter').value = pwd;
+      updateLaudos();
+    } else {
+      alert("Acesso negado: Senha ou Endereço inválido!");
+    }
+  } catch (e) {
+    alert("Erro de conexão ao descriptografar.");
+  }
+}
+
+async function revelarPagamento(txID) {
+  const pwd = prompt("Digite a senha de simulação (1234) ou o endereço 0x da empresa envolvida para descriptografar os metadados:");
+  if (!pwd) return;
+  try {
+    const resp = await fetch('/api/explorer/payments?company=' + encodeURIComponent(pwd));
+    if (!resp.ok) { alert('Acesso negado!'); return; }
+    const payments = await resp.json();
+    const found = payments.find(x => x.tx_id === txID);
+    if (found && found.payload !== '[PRIVADO]') {
+      alert("🔓 PAYLOAD DE TRANSAÇÃO DESCRIPTOGRAFADO:\n\n" + found.payload);
+      document.getElementById('pag-company-filter').value = pwd;
+      updatePagamentos();
+    } else {
+      alert("Acesso negado: Senha ou Endereço inválido!");
+    }
+  } catch (e) {
+    alert("Erro de conexão ao descriptografar.");
+  }
+}
+
+// ── Polling Periódico Dinâmico para a Aba Ativa ──
+setInterval(() => {
+  if (currentTab === 'explorer') updateExplorer();
+  if (currentTab === 'laudos') updateLaudos();
+  if (currentTab === 'pagamentos') updatePagamentos();
+}, 2000);
 </script>
 </body>
 </html>`

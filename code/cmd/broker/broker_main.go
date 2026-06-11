@@ -1084,6 +1084,12 @@ func (b *Broker) handleBlockProposal(block models.Block) {
 		return
 	}
 
+	// Validação de isolamento das transações do bloco (Prevenção de Duplo Gasto e assinaturas inválidas)
+	if err := b.blockchain.ValidateBlockTransactions(block); err != nil {
+		b.logger.Printf("[CONSENSO POA] Proposta de bloco %d de %s rejeitada: %v", block.Index, block.Validator, err)
+		return
+	}
+
 	blocks := b.blockchain.GetBlocks()
 	latestBlock := blocks[len(blocks)-1]
 	if block.Index != latestBlock.Index+1 || block.PrevHash != latestBlock.Hash {
