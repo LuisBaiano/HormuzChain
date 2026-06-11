@@ -169,31 +169,76 @@ while true; do
         11)
             echo -e "\n\e[1;32m=> Criar/Subir Novo Navio (Container Docker)\e[0m"
             read -p "ID do navio (ex: vessel_maersk_02): " NEW_VESSEL_ID
-            read -p "Empresa proprietária (ex: Maersk, MSC, CMA_CGM, Hapag_Lloyd): " COMP_NAME
-            read -p "Coordenada X inicial (100-900): " VESSEL_X
-            read -p "Coordenada Y inicial (100-900): " VESSEL_Y
-
-            if [ "$COMP_NAME" == "Maersk" ]; then
-                COMP_ADDR="0x280f33adb69caa3e5c8c"
-                COMP_PRIV="9bfb94f11c9b617fb14a2452f0e243759147ef9eb8bf60d7121787d4504eafa4"
-            elif [ "$COMP_NAME" == "MSC" ]; then
-                COMP_ADDR="0x2a9621c924cf329f550a"
-                COMP_PRIV="cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20"
-            elif [ "$COMP_NAME" == "CMA_CGM" ] || [ "$COMP_NAME" == "CMA" ]; then
-                COMP_NAME="CMA_CGM"
-                COMP_ADDR="0x7daccdb0e3eb3ce3d768"
-                COMP_PRIV="682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7"
-            elif [ "$COMP_NAME" == "Hapag_Lloyd" ] || [ "$COMP_NAME" == "Hapag" ]; then
-                COMP_NAME="Hapag_Lloyd"
-                COMP_ADDR="0xf7d808577df8b4454e18"
-                COMP_PRIV="303b1fa143cff773c69665a3891971bde28806c59ea2d4930f9fb8ac2c861a0a"
-            else
-                read -p "Endereço da carteira da empresa (0x...): " COMP_ADDR
-                read -p "Chave privada da empresa: " COMP_PRIV
+            
+            if [ -z "$NEW_VESSEL_ID" ]; then
+                echo -e "\e[1;31mID do navio inválido!\e[0m"
+                read -p "Pressione Enter para continuar..."
+                continue
             fi
 
-            echo -e "\n=> Registrando navio $NEW_VESSEL_ID na Blockchain..."
-            ./hormuz_cli vessel-reg -company "$COMP_NAME" -vessel "$NEW_VESSEL_ID" -broker "http://localhost:7000"
+            # Buscar empresas registradas na blockchain (padrão + dinâmicas)
+            echo "Buscando empresas registradas na rede..."
+            mapfile -t COMPANIES < <(python3 -c "
+import urllib.request, json
+companies = ['Maersk', 'MSC', 'CMA_CGM', 'Hapag_Lloyd', 'ONE']
+for port in [7000, 7001, 7002, 7003]:
+    try:
+        req = urllib.request.Request(f'http://localhost:{port}/blockchain/transactions')
+        with urllib.request.urlopen(req, timeout=1) as response:
+            txs = json.loads(response.read().decode())
+            for tx in txs:
+                if tx.get('type') == 'REGISTER' and tx.get('payload'):
+                    name = tx['payload']
+                    if name not in companies:
+                        companies.append(name)
+            break
+    except Exception:
+        pass
+for c in companies:
+    print(c)
+" 2>/dev/null)
+
+            echo -e "\nDeseja adicionar esse navio à frota de qual empresa?"
+            for i in "${!COMPANIES[@]}"; do
+                echo "$((i+1))) ${COMPANIES[$i]}"
+            done
+            
+            read -p "Escolha a empresa (número): " COMP_INDEX
+            if [[ ! "$COMP_INDEX" =~ ^[0-9]+$ ]] || [ "$COMP_INDEX" -lt 1 ] || [ "$COMP_INDEX" -gt "${#COMPANIES[@]}" ]; then
+                echo -e "\e[1;31mOpção inválida! Cancelando registro de navio.\e[0m"
+                read -p "Pressione Enter para continuar..."
+                continue
+            fi
+            
+            COMP_NAME="${COMPANIES[$((COMP_INDEX-1))]}"
+            echo "Empresa selecionada: $COMP_NAME"
+
+            # Obter chaves automaticamente do CLI
+            KEYS_OUT=$(./hormuz_cli keys -company "$COMP_NAME" 2>/dev/null)
+            if [ -z "$KEYS_OUT" ]; then
+                echo -e "\e[1;31mErro ao derivar as chaves da empresa $COMP_NAME!\e[0m"
+                read -p "Pressione Enter para continuar..."
+                continue
+            fi
+            COMP_PRIV=$(echo "$KEYS_OUT" | awk '{print $1}')
+            COMP_ADDR=$(echo "$KEYS_OUT" | awk '{print $2}')
+
+            # Coordenadas aleatórias
+            VESSEL_X=$((100 + RANDOM % 801))
+            VESSEL_Y=$((100 + RANDOM % 801))
+            echo "Coordenadas geradas automaticamente: X=$VESSEL_X, Y=$VESSEL_Y"
+
+            # Descobrir porta ativa da API REST para registro
+            ACTIVE_BROKER_API="http://localhost:7000"
+            for port in 7000 7001 7002 7003; do
+                if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${port}/occurrences" --max-time 1 | grep -q "200" 2>/dev/null; then
+                    ACTIVE_BROKER_API="http://localhost:${port}"
+                    break
+                fi
+            done
+
+            echo -e "\n=> Registrando navio $NEW_VESSEL_ID na Blockchain via $ACTIVE_BROKER_API..."
+            ./hormuz_cli vessel-reg -company "$COMP_NAME" -vessel "$NEW_VESSEL_ID" -broker "$ACTIVE_BROKER_API"
             
             echo -e "=> Construindo imagem docker do navio se necessário..."
             docker build -t hormuznet-vessel -f code/Dockerfile.vessel code
@@ -204,7 +249,7 @@ while true; do
                 -e COMPANY_NAME="$COMP_NAME" \
                 -e COMPANY_ADDR="$COMP_ADDR" \
                 -e COMPANY_PRIV_KEY="$COMP_PRIV" \
-                -e BROKER_API="http://localhost:7000" \
+                -e BROKER_API="$ACTIVE_BROKER_API" \
                 -e X="$VESSEL_X" \
                 -e Y="$VESSEL_Y" \
                 hormuznet-vessel

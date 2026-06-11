@@ -33,6 +33,8 @@ func main() {
 		handleRegister()
 	case "vessel-reg":
 		handleVesselReg()
+	case "keys":
+		handleKeys()
 	default:
 		fmt.Printf("Subcomando desconhecido: %s\n", subcommand)
 		printUsage()
@@ -47,7 +49,23 @@ func printUsage() {
 	fmt.Println("  transfer    - Transfere ELIS entre empresas")
 	fmt.Println("  register    - Registra uma nova empresa e ganha 1000 ELIS")
 	fmt.Println("  vessel-reg  - Registra um navio associado a uma empresa")
+	fmt.Println("  keys        - Obtém chaves e endereço determinísticos de uma empresa")
 }
+
+func handleKeys() {
+	fs := flag.NewFlagSet("keys", flag.ExitOnError)
+	companyFlag := fs.String("company", "", "Nome da empresa")
+	fs.Parse(os.Args[2:])
+
+	if *companyFlag == "" {
+		log.Fatal("Erro: especifique -company")
+	}
+
+	priv, pub := blockchain.DeterministicKey(*companyFlag)
+	addr := wallet.GetAddress(pub)
+	fmt.Printf("%s %s\n", priv, addr)
+}
+
 
 func handleBalance() {
 	fs := flag.NewFlagSet("balance", flag.ExitOnError)
