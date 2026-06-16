@@ -709,6 +709,7 @@ func (b *Broker) processarMensagemDrone(msg models.MensagemDrone) {
 				tx := models.Transaction{
 					Type:         models.TxMissionLog,
 					From:         wallet.GetAddress(blockchain.GetValidatorPubKey(b.id)),
+					PublicKey:    blockchain.GetValidatorPubKey(b.id),
 					OccurrenceID: msg.OcorrenciaID,
 					VesselID:     occ.VesselID,
 					DroneID:      msg.DroneID,
@@ -716,16 +717,25 @@ func (b *Broker) processarMensagemDrone(msg models.MensagemDrone) {
 					Timestamp:    time.Now(),
 				}
 				tx.ID = blockchain.HashTx(tx)
-				b.blockchain.AddTxToMempool(tx)
 				
-				b.broadcastVizinhos(models.MensagemBroker{
-					Tipo:        models.MsgTxBroadcast,
-					BrokerID:    b.id,
-					Transaction: &tx,
-					Timestamp:   time.Now(),
-					LamportTime: b.tick(),
-				})
-				b.logger.Printf("[ON-CHAIN LOG] Tx de conclusão registrada para Ocorrência %s", msg.OcorrenciaID)
+				sig, err := wallet.Sign(blockchain.GetValidatorPrivKey(b.id), []byte(tx.ID))
+				if err != nil {
+					b.logger.Printf("[ON-CHAIN LOG ERROR] Falha ao assinar laudo: %v", err)
+				} else {
+					tx.Signature = sig
+					if err := b.blockchain.AddTxToMempool(tx); err != nil {
+						b.logger.Printf("[ON-CHAIN LOG ERROR] Falha ao adicionar laudo à mempool: %v", err)
+					} else {
+						b.broadcastVizinhos(models.MensagemBroker{
+							Tipo:        models.MsgTxBroadcast,
+							BrokerID:    b.id,
+							Transaction: &tx,
+							Timestamp:   time.Now(),
+							LamportTime: b.tick(),
+						})
+						b.logger.Printf("[ON-CHAIN LOG] Tx de conclusão registrada para Ocorrência %s", msg.OcorrenciaID)
+					}
+				}
 			}
 		}
 
