@@ -103,6 +103,7 @@ services:
     - -intervalo=20000
     - -x=150
     - -y=750
+    - -broker-api=http://localhost:7000,http://localhost:7001,http://localhost:7002,http://localhost:7003
     restart: on-failure
 
   vessel_1:

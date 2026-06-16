@@ -85,12 +85,28 @@ def gerar_yaml_completo():
         for j in range(2):
             t = random.choice(types)
             x, y = coords[j]
+            
+            # Compute prioritized REST API port list
+            broker_num = int(b["id"][1])
+            primary_api_port = 7000 + (broker_num - 1)
+            ordered_api_ports = [primary_api_port] + [p for p in [7000, 7001, 7002, 7003] if p != primary_api_port]
+            broker_api_str = ",".join(f"http://localhost:{p}" for p in ordered_api_ports)
+
             id_sensor = f"{t}_{setor_short}_{sensor_idx}"
             services[f"sensor_{sensor_idx}"] = {
                 "build": {"context": "./code", "dockerfile": "Dockerfile.sensor"},
                 "container_name": f"hormuznet_{id_sensor}",
                 "network_mode": "host",
-                "command": [f"-id={id_sensor}", f"-tipo={t}", f"-setor={b['setor']}", "-broker=224.1.2.3:9876", "-intervalo=20000", f"-x={x}", f"-y={y}"],
+                "command": [
+                    f"-id={id_sensor}",
+                    f"-tipo={t}",
+                    f"-setor={b['setor']}",
+                    "-broker=224.1.2.3:9876",
+                    "-intervalo=20000",
+                    f"-x={x}",
+                    f"-y={y}",
+                    f"-broker-api={broker_api_str}"
+                ],
                 "restart": "on-failure"
             }
             sensor_idx += 1

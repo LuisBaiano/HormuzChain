@@ -713,7 +713,7 @@ func (b *Broker) processarMensagemDrone(msg models.MensagemDrone) {
 					OccurrenceID: msg.OcorrenciaID,
 					VesselID:     occ.VesselID,
 					DroneID:      msg.DroneID,
-					Payload:      fmt.Sprintf("Escort successfully completed at coordinates (%.1f, %.1f)", d.Posicao.X, d.Posicao.Y),
+					Payload:      fmt.Sprintf("Escolta concluída com sucesso nas coordenadas (%.1f, %.1f)", d.Posicao.X, d.Posicao.Y),
 					Timestamp:    time.Now(),
 				}
 				tx.ID = blockchain.HashTx(tx)

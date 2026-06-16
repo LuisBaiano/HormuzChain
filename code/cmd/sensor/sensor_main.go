@@ -13,6 +13,8 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,18 +26,30 @@ var (
 	vesselsMap = make(map[string]models.Coordenada)
 )
 
-func loopUpdateVessels(brokerAPI string) {
+func loopUpdateVessels(brokerAPIs string) {
+	apis := strings.Split(brokerAPIs, ",")
 	client := http.Client{Timeout: 1 * time.Second}
 	for {
-		resp, err := client.Get(brokerAPI + "/vessels")
-		if err == nil {
-			var temp map[string]models.Coordenada
-			if err := json.NewDecoder(resp.Body).Decode(&temp); err == nil {
-				vesselsMu.Lock()
-				vesselsMap = temp
-				vesselsMu.Unlock()
+		success := false
+		for _, apiAddr := range apis {
+			apiAddr = strings.TrimSpace(apiAddr)
+			if apiAddr == "" {
+				continue
 			}
-			resp.Body.Close()
+			resp, err := client.Get(apiAddr + "/vessels")
+			if err == nil {
+				var temp map[string]models.Coordenada
+				if err := json.NewDecoder(resp.Body).Decode(&temp); err == nil {
+					vesselsMu.Lock()
+					vesselsMap = temp
+					vesselsMu.Unlock()
+					success = true
+				}
+				resp.Body.Close()
+			}
+			if success {
+				break
+			}
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -51,6 +65,10 @@ func main() {
 	posX := flag.Float64("x", 0, "Posição X inicial")
 	posY := flag.Float64("y", 0, "Posição Y inicial")
 	flag.Parse()
+
+	if envBrokerAPI := os.Getenv("BROKER_API"); envBrokerAPI != "" {
+		*brokerAPI = envBrokerAPI
+	}
 
 	rand.Seed(time.Now().UnixNano())
 

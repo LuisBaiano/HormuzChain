@@ -55,6 +55,7 @@ while true; do
     echo -e "\e[1;32mCiclo de Vida de Navios (Vessels):\e[0m"
     echo "11) Criar/Subir Novo Navio (Container Docker)"
     echo "12) Abater/Destruir Navio Ativo (Container Docker)"
+    echo "13) Parar/Remover um Container Específico"
     echo "0) Sair"
     echo ""
     read -p "Opção: " OPTION
@@ -128,17 +129,30 @@ while true; do
         7)
             echo -e "\n\e[1;31m=> Parando e removendo todos os containers...\e[0m"
             $DOCKER_COMPOSE -f docker-compose-all.yml down --remove-orphans || true
+            $DOCKER_COMPOSE -f docker-compose-escala.yml down --remove-orphans || true
+            $DOCKER_COMPOSE -f docker-compose-minimal.yml down --remove-orphans || true
+            if [ -f "docker-compose-dist.yml" ]; then
+                $DOCKER_COMPOSE -f docker-compose-dist.yml down --remove-orphans || true
+            fi
             if [ -f "docker-compose-temp.yml" ]; then
                 $DOCKER_COMPOSE -f docker-compose-temp.yml down --remove-orphans || true
                 rm -f docker-compose-temp.yml
             fi
-            # Remove navios dinâmicos
-            DYN_VESSELS=$(docker ps -a --filter "name=hormuzchain_" -q)
-            if [ -n "$DYN_VESSELS" ]; then
-                echo "Parando navios dinâmicos..."
-                docker stop $DYN_VESSELS || true
-                docker rm $DYN_VESSELS || true
+            
+            # Remove qualquer container residual do projeto
+            CONTAINERS_NET=$(docker ps -a --filter "name=hormuznet_" -q)
+            if [ -n "$CONTAINERS_NET" ]; then
+                echo "Removendo contêineres HormuzNet..."
+                docker stop $CONTAINERS_NET || true
+                docker rm $CONTAINERS_NET || true
             fi
+            CONTAINERS_CHAIN=$(docker ps -a --filter "name=hormuzchain_" -q)
+            if [ -n "$CONTAINERS_CHAIN" ]; then
+                echo "Removendo contêineres HormuzChain..."
+                docker stop $CONTAINERS_CHAIN || true
+                docker rm $CONTAINERS_CHAIN || true
+            fi
+            
             echo -e "\n\e[1;32m[SUCESSO] Ambiente limpo!\e[0m"
             read -p "Pressione Enter para continuar..."
             ;;
@@ -269,6 +283,41 @@ for c in companies:
                 echo -e "\e[1;32m[SUCESSO] Navio removido com sucesso!\e[0m"
             else
                 echo "Nenhum container informado."
+            fi
+            read -p "Pressione Enter para continuar..."
+            ;;
+        13)
+            echo -e "\n\e[1;32m=> Parar/Remover um Container Específico\e[0m"
+            echo "Buscando contêineres do HormuzChain..."
+            
+            mapfile -t ALL_CONTAINER_NAMES < <(docker ps -a --format "{{.Names}}" | grep -E "hormuznet_|hormuzchain_" || true)
+            
+            if [ ${#ALL_CONTAINER_NAMES[@]} -eq 0 ]; then
+                echo "Nenhum contêiner do HormuzChain/HormuzNet encontrado."
+                read -p "Pressione Enter para continuar..."
+                continue
+            fi
+            
+            echo "Contêineres encontrados:"
+            for i in "${!ALL_CONTAINER_NAMES[@]}"; do
+                STATUS=$(docker inspect --format='{{.State.Status}}' "${ALL_CONTAINER_NAMES[$i]}" 2>/dev/null || echo "desconhecido")
+                echo "$((i+1))) ${ALL_CONTAINER_NAMES[$i]} [Status: $STATUS]"
+            done
+            echo ""
+            read -p "Escolha o número do contêiner que deseja parar e remover (ou 0 para cancelar): " CHOICE
+            
+            if [[ ! "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -lt 1 ] || [ "$CHOICE" -gt "${#ALL_CONTAINER_NAMES[@]}" ]; then
+                if [ "$CHOICE" = "0" ]; then
+                    echo "Operação cancelada."
+                else
+                    echo -e "\e[1;31mOpção inválida!\e[0m"
+                fi
+            else
+                TARGET_CONTAINER="${ALL_CONTAINER_NAMES[$((CHOICE-1))]}"
+                echo -e "=> Parando e removendo contêiner: $TARGET_CONTAINER..."
+                docker stop "$TARGET_CONTAINER" || true
+                docker rm "$TARGET_CONTAINER" || true
+                echo -e "\e[1;32m[SUCESSO] Contêiner removido com sucesso!\e[0m"
             fi
             read -p "Pressione Enter para continuar..."
             ;;

@@ -186,11 +186,31 @@ def gerar_yaml(mode, count, lider_ip, start_index=-1):
                 x, y = coords[j]
                 id_sensor = f"{t}_{b['setor'].split('_')[1].lower()}_{s_count}"
                 
+                # Compute prioritized REST API port list
+                broker_num = int(b["id"][1])
+                primary_api_port = 7000 + (broker_num - 1)
+                apis = [f"http://localhost:{primary_api_port}"]
+                if lider_ip and lider_ip != "127.0.0.1":
+                    apis.append(f"http://{lider_ip}:7000")
+                for p in [7000, 7001, 7002, 7003]:
+                    if p != primary_api_port:
+                        apis.append(f"http://localhost:{p}")
+                broker_api_str = ",".join(apis)
+
                 services[f"sensor_{s_count}"] = {
                     "build": {"context": "./code", "dockerfile": "Dockerfile.sensor"},
                     "container_name": f"hormuznet_{id_sensor}",
                     "network_mode": "host",
-                    "command": [f"-id={id_sensor}", f"-tipo={t}", f"-setor={b['setor']}", "-broker=224.1.2.3:9876", "-intervalo=20000", f"-x={x}", f"-y={y}"],
+                    "command": [
+                        f"-id={id_sensor}",
+                        f"-tipo={t}",
+                        f"-setor={b['setor']}",
+                        "-broker=224.1.2.3:9876",
+                        "-intervalo=20000",
+                        f"-x={x}",
+                        f"-y={y}",
+                        f"-broker-api={broker_api_str}"
+                    ],
                     "restart": "on-failure"
                 }
                 s_count += 1

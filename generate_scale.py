@@ -78,12 +78,26 @@ def gerar_yaml_escala():
         else:
             x, y = 650, 250
 
+        # Get the primary REST API port and fallbacks
+        primary_api_port = 7000 + idx
+        ordered_api_ports = [primary_api_port] + [p for p in [7000, 7001, 7002, 7003] if p != primary_api_port]
+        broker_api_str = ",".join(f"http://localhost:{p}" for p in ordered_api_ports)
+
         id_sensor = f"{t}_{setor_short}_1"
         services[f"sensor_{idx+1}"] = {
             "build": {"context": "./code", "dockerfile": "Dockerfile.sensor"},
             "container_name": f"hormuznet_{id_sensor}",
             "network_mode": "host",
-            "command": [f"-id={id_sensor}", f"-tipo={t}", f"-setor={b['setor']}", "-broker=224.1.2.3:9876", "-intervalo=15000", f"-x={x}", f"-y={y}"],
+            "command": [
+                f"-id={id_sensor}",
+                f"-tipo={t}",
+                f"-setor={b['setor']}",
+                "-broker=224.1.2.3:9876",
+                "-intervalo=15000",
+                f"-x={x}",
+                f"-y={y}",
+                f"-broker-api={broker_api_str}"
+            ],
             "restart": "on-failure"
         }
 

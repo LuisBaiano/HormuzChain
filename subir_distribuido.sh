@@ -90,7 +90,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.sensor }
     container_name: hormuznet_sonar_noroeste_1
     network_mode: host
-    command: ["-id=sonar_noroeste_1", "-tipo=sonar", "-setor=Setor_Noroeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=150", "-y=750"]
+    command: ["-id=sonar_noroeste_1", "-tipo=sonar", "-setor=Setor_Noroeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=150", "-y=750", "-broker-api=http://localhost:7000,http://localhost:7001,http://localhost:7002,http://localhost:7003"]
     restart: on-failure
 
   vessel_1:
@@ -158,7 +158,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.sensor }
     container_name: hormuznet_radar_nordeste_1
     network_mode: host
-    command: ["-id=radar_nordeste_1", "-tipo=radar", "-setor=Setor_Nordeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=650", "-y=750"]
+    command: ["-id=radar_nordeste_1", "-tipo=radar", "-setor=Setor_Nordeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=650", "-y=750", "-broker-api=http://localhost:7001,http://${LIDER_IP}:7000,http://localhost:7000,http://localhost:7002,http://localhost:7003"]
     restart: on-failure
 
   vessel_3:
@@ -226,7 +226,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.sensor }
     container_name: hormuznet_boia_sudoeste_1
     network_mode: host
-    command: ["-id=boia_sudoeste_1", "-tipo=boia", "-setor=Setor_Sudoeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=150", "-y=250"]
+    command: ["-id=boia_sudoeste_1", "-tipo=boia", "-setor=Setor_Sudoeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=150", "-y=250", "-broker-api=http://localhost:7002,http://${LIDER_IP}:7000,http://localhost:7000,http://localhost:7001,http://localhost:7003"]
     restart: on-failure
 
   vessel_5:
@@ -280,7 +280,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.sensor }
     container_name: hormuznet_visual_sudeste_1
     network_mode: host
-    command: ["-id=visual_sudeste_1", "-tipo=visual", "-setor=Setor_Sudeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=650", "-y=250"]
+    command: ["-id=visual_sudeste_1", "-tipo=visual", "-setor=Setor_Sudeste", "-broker=224.1.2.3:9876", "-intervalo=15000", "-x=650", "-y=250", "-broker-api=http://localhost:7003,http://${LIDER_IP}:7000,http://localhost:7000,http://localhost:7001,http://localhost:7002"]
     restart: on-failure
 
   vessel_7:
