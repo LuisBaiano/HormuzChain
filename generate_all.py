@@ -46,20 +46,24 @@ def gerar_yaml_completo():
 
     # 4. 8 Drones (2 por setor/broker)
     drone_sectors = [
-        {"setor": "NW", "x": 250, "y": 750},
-        {"setor": "NE", "x": 750, "y": 750},
-        {"setor": "SW", "x": 250, "y": 250},
-        {"setor": "SE", "x": 750, "y": 250}
+        {"setor": "NW", "x": 250, "y": 750, "port": 6000},
+        {"setor": "NE", "x": 750, "y": 750, "port": 6001},
+        {"setor": "SW", "x": 250, "y": 250, "port": 6002},
+        {"setor": "SE", "x": 750, "y": 250, "port": 6003}
     ]
+    all_broker_ports = [6000, 6001, 6002, 6003]
     drone_idx = 1
     for s_info in drone_sectors:
+        primary = s_info["port"]
+        ordered = [primary] + [p for p in all_broker_ports if p != primary]
+        brokers_str = ",".join(f"127.0.0.1:{p}" for p in ordered)
         for j in range(2):
             id_drone = f"Drone_{s_info['setor']}_{drone_idx}"
             services[f"drone{drone_idx}"] = {
                 "build": {"context": "./code", "dockerfile": "Dockerfile.drone"},
                 "container_name": f"hormuznet_{id_drone.lower()}",
                 "network_mode": "host",
-                "command": [f"-id={id_drone}", "-brokers=127.0.0.1:6000", f"-x={s_info['x']}", f"-y={s_info['y']}"],
+                "command": [f"-id={id_drone}", f"-brokers={brokers_str}", f"-x={s_info['x']}", f"-y={s_info['y']}"],
                 "restart": "on-failure"
             }
             drone_idx += 1
@@ -123,7 +127,12 @@ def gerar_yaml_completo():
         }
     ]
 
+    all_api_ports = [7000, 7001, 7002, 7003]
     for idx, v in enumerate(initial_vessels):
+        primary_port = int(v["broker_api"].split(":")[-1])
+        ordered_api_ports = [primary_port] + [p for p in all_api_ports if p != primary_port]
+        api_fallback_str = ",".join(f"http://localhost:{p}" for p in ordered_api_ports)
+
         services[f"vessel_{idx+1}"] = {
             "build": {"context": "./code", "dockerfile": "Dockerfile.vessel"},
             "container_name": f"hormuzchain_{v['id']}",
@@ -133,7 +142,7 @@ def gerar_yaml_completo():
                 "COMPANY_NAME": v["company_name"],
                 "COMPANY_ADDR": v["company_addr"],
                 "COMPANY_PRIV_KEY": v["company_priv"],
-                "BROKER_API": v["broker_api"],
+                "BROKER_API": api_fallback_str,
                 "X": str(v["x"]),
                 "Y": str(v["y"])
             },

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"HormuzNet/internal/blockchain"
@@ -20,6 +21,32 @@ type VesselKeepalive struct {
 	VesselID string  `json:"vessel_id"`
 	X        float64 `json:"x"`
 	Y        float64 `json:"y"`
+}
+
+func tryGet(apis []string, path string) (*http.Response, string, error) {
+	client := http.Client{Timeout: 2 * time.Second}
+	var lastErr error
+	for _, apiAddr := range apis {
+		resp, err := client.Get(fmt.Sprintf("%s%s", apiAddr, path))
+		if err == nil {
+			return resp, apiAddr, nil
+		}
+		lastErr = err
+	}
+	return nil, "", lastErr
+}
+
+func tryPost(apis []string, path string, contentType string, body []byte) (*http.Response, string, error) {
+	client := http.Client{Timeout: 2 * time.Second}
+	var lastErr error
+	for _, apiAddr := range apis {
+		resp, err := client.Post(fmt.Sprintf("%s%s", apiAddr, path), contentType, bytes.NewBuffer(body))
+		if err == nil {
+			return resp, apiAddr, nil
+		}
+		lastErr = err
+	}
+	return nil, "", lastErr
 }
 
 func main() {
@@ -64,11 +91,14 @@ func main() {
 	// Wait 3 seconds for brokers to wake up
 	time.Sleep(3 * time.Second)
 
+	// Split APIs by comma to handle fallback list
+	apis := strings.Split(*brokerAPI, ",")
+
 	// 1. Register Vessel on-chain
-	registerVessel(*vesselID, *companyAddr, *companyPriv, *brokerAPI)
+	registerVessel(*vesselID, *companyAddr, *companyPriv, apis)
 
 	// 2. Loop keepalives & Auto-payments
-	go autoPayLoop(*vesselID, *companyAddr, *companyPriv, *brokerAPI)
+	go autoPayLoop(*vesselID, *companyAddr, *companyPriv, apis)
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -89,18 +119,16 @@ func main() {
 			vy = -vy
 		}
 
-		sendKeepalive(*vesselID, *posX, *posY, *brokerAPI)
+		sendKeepalive(*vesselID, *posX, *posY, apis)
 	}
 }
 
-func autoPayLoop(vesselID, companyAddr, privKey, brokerAPI string) {
+func autoPayLoop(vesselID, companyAddr, privKey string, apis []string) {
 	ticker := time.NewTicker(4 * time.Second)
 	defer ticker.Stop()
 
-	client := http.Client{Timeout: 3 * time.Second}
-
 	for range ticker.C {
-		resp, err := client.Get(fmt.Sprintf("%s/occurrences", brokerAPI))
+		resp, activeAPI, err := tryGet(apis, "/occurrences")
 		if err != nil {
 			continue
 		}
@@ -137,7 +165,7 @@ func autoPayLoop(vesselID, companyAddr, privKey, brokerAPI string) {
 					continue
 				}
 
-				payResp, err := client.Post(fmt.Sprintf("%s/wallet/pay", brokerAPI), "application/json", bytes.NewBuffer(payData))
+				payResp, _, err := tryPost([]string{activeAPI}, "/wallet/pay", "application/json", payData)
 				if err != nil {
 					log.Printf("[AUTO-PAY %s] Payment request failed: %v", vesselID, err)
 					continue
@@ -170,7 +198,7 @@ func autoPayLoop(vesselID, companyAddr, privKey, brokerAPI string) {
 }
 
 
-func registerVessel(vesselID, companyAddr, privKey, brokerAPI string) {
+func registerVessel(vesselID, companyAddr, privKey string, apis []string) {
 	compName := os.Getenv("COMPANY_NAME")
 	if compName == "" {
 		compName = "Maersk" // default fallback
@@ -197,7 +225,7 @@ func registerVessel(vesselID, companyAddr, privKey, brokerAPI string) {
 		return
 	}
 
-	resp, err := http.Post(fmt.Sprintf("%s/blockchain/tx", brokerAPI), "application/json", bytes.NewBuffer(data))
+	resp, _, err := tryPost(apis, "/blockchain/tx", "application/json", data)
 	if err != nil {
 		log.Printf("[VESSEL] Failed to register vessel: %v", err)
 		return
@@ -210,7 +238,7 @@ func registerVessel(vesselID, companyAddr, privKey, brokerAPI string) {
 	}
 }
 
-func sendKeepalive(vesselID string, x, y float64, brokerAPI string) {
+func sendKeepalive(vesselID string, x, y float64, apis []string) {
 	ka := VesselKeepalive{
 		VesselID: vesselID,
 		X:        x,
@@ -221,11 +249,9 @@ func sendKeepalive(vesselID string, x, y float64, brokerAPI string) {
 		return
 	}
 
-	resp, err := http.Post(fmt.Sprintf("%s/vessel/keepalive", brokerAPI), "application/json", bytes.NewBuffer(data))
+	resp, _, err := tryPost(apis, "/vessel/keepalive", "application/json", data)
 	if err != nil {
-		log.Printf("[VESSEL %s] Keepalive failed: %v", vesselID, err)
 		return
 	}
 	resp.Body.Close()
-	// Silenced keepalive to keep terminal clean for transactions
 }

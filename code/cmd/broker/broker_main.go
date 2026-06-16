@@ -412,6 +412,11 @@ func (b *Broker) processarLeitura(dados []byte) {
 		return
 	}
 
+	if leitura.VesselID == "" {
+		b.logger.Printf("[UDP DESCARTADO] Leitura do Sensor %s descartada: não há navio associado.", leitura.SensorID)
+		return
+	}
+
 	if leitura.Criticidade < models.CriticidadeAlta && leitura.Criticidade != models.CriticidadeBaixa {
 		return
 	}

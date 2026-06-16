@@ -151,7 +151,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.drone }
     container_name: hormuznet_drone_ne_1
     network_mode: host
-    command: ["-id=Drone_NE_1", "-brokers=${LIDER_IP}:6000", "-x=750", "-y=750"]
+    command: ["-id=Drone_NE_1", "-brokers=127.0.0.1:6001,${LIDER_IP}:6000", "-x=750", "-y=750"]
     restart: on-failure
 
   sensor_2:
@@ -170,7 +170,7 @@ services:
       COMPANY_NAME: MSC
       COMPANY_ADDR: '0x2a9621c924cf329f550a'
       COMPANY_PRIV_KEY: cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20
-      BROKER_API: http://localhost:7001
+      BROKER_API: http://localhost:7001,http://${LIDER_IP}:7000
       X: '620'
       Y: '780'
     restart: on-failure
@@ -184,7 +184,7 @@ services:
       COMPANY_NAME: MSC
       COMPANY_ADDR: '0x2a9621c924cf329f550a'
       COMPANY_PRIV_KEY: cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20
-      BROKER_API: http://localhost:7001
+      BROKER_API: http://localhost:7001,http://${LIDER_IP}:7000
       X: '720'
       Y: '820'
     restart: on-failure
@@ -198,7 +198,7 @@ services:
       COMPANY_NAME: ONE
       COMPANY_ADDR: '0x371273902bfb4590c1d5'
       COMPANY_PRIV_KEY: 2192e8955d5e1ad1651f2f0c637e6f1ac82855747a5f42f978db28669595dc21
-      BROKER_API: http://localhost:7001
+      BROKER_API: http://localhost:7001,http://${LIDER_IP}:7000
       X: '550'
       Y: '500'
     restart: on-failure
@@ -219,7 +219,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.drone }
     container_name: hormuznet_drone_sw_1
     network_mode: host
-    command: ["-id=Drone_SW_1", "-brokers=${LIDER_IP}:6000", "-x=250", "-y=250"]
+    command: ["-id=Drone_SW_1", "-brokers=127.0.0.1:6002,${LIDER_IP}:6000", "-x=250", "-y=250"]
     restart: on-failure
 
   sensor_3:
@@ -238,7 +238,7 @@ services:
       COMPANY_NAME: CMA_CGM
       COMPANY_ADDR: '0x7daccdb0e3eb3ce3d768'
       COMPANY_PRIV_KEY: 682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7
-      BROKER_API: http://localhost:7002
+      BROKER_API: http://localhost:7002,http://${LIDER_IP}:7000
       X: '120'
       Y: '280'
     restart: on-failure
@@ -252,7 +252,7 @@ services:
       COMPANY_NAME: CMA_CGM
       COMPANY_ADDR: '0x7daccdb0e3eb3ce3d768'
       COMPANY_PRIV_KEY: 682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7
-      BROKER_API: http://localhost:7002
+      BROKER_API: http://localhost:7002,http://${LIDER_IP}:7000
       X: '220'
       Y: '320'
     restart: on-failure
@@ -273,7 +273,7 @@ services:
     build: { context: ./code, dockerfile: Dockerfile.drone }
     container_name: hormuznet_drone_se_1
     network_mode: host
-    command: ["-id=Drone_SE_1", "-brokers=${LIDER_IP}:6000", "-x=750", "-y=250"]
+    command: ["-id=Drone_SE_1", "-brokers=127.0.0.1:6003,${LIDER_IP}:6000", "-x=750", "-y=250"]
     restart: on-failure
 
   sensor_4:
@@ -292,7 +292,7 @@ services:
       COMPANY_NAME: Hapag_Lloyd
       COMPANY_ADDR: '0xf7d808577df8b4454e18'
       COMPANY_PRIV_KEY: 303b1fa143cff773c69665a3891971bde28806c59ea2d4930f9fb8ac2c861a0a
-      BROKER_API: http://localhost:7003
+      BROKER_API: http://localhost:7003,http://${LIDER_IP}:7000
       X: '620'
       Y: '280'
     restart: on-failure
@@ -306,7 +306,7 @@ services:
       COMPANY_NAME: Hapag_Lloyd
       COMPANY_ADDR: '0xf7d808577df8b4454e18'
       COMPANY_PRIV_KEY: 303b1fa143cff773c69665a3891971bde28806c59ea2d4930f9fb8ac2c861a0a
-      BROKER_API: http://localhost:7003
+      BROKER_API: http://localhost:7003,http://${LIDER_IP}:7000
       X: '720'
       Y: '320'
     restart: on-failure

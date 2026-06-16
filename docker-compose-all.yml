@@ -72,7 +72,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_NW_1
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6002,127.0.0.1:6003
     - -x=250
     - -y=750
     restart: on-failure
@@ -84,7 +84,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_NW_2
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6002,127.0.0.1:6003
     - -x=250
     - -y=750
     restart: on-failure
@@ -96,7 +96,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_NE_3
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6001,127.0.0.1:6000,127.0.0.1:6002,127.0.0.1:6003
     - -x=750
     - -y=750
     restart: on-failure
@@ -108,7 +108,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_NE_4
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6001,127.0.0.1:6000,127.0.0.1:6002,127.0.0.1:6003
     - -x=750
     - -y=750
     restart: on-failure
@@ -120,7 +120,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_SW_5
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6002,127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6003
     - -x=250
     - -y=250
     restart: on-failure
@@ -132,7 +132,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_SW_6
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6002,127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6003
     - -x=250
     - -y=250
     restart: on-failure
@@ -144,7 +144,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_SE_7
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6003,127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6002
     - -x=750
     - -y=250
     restart: on-failure
@@ -156,7 +156,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_SE_8
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6003,127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6002
     - -x=750
     - -y=250
     restart: on-failure
@@ -164,11 +164,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_sonar_noroeste_1
+    container_name: hormuznet_visual_noroeste_1
     network_mode: host
     command:
-    - -id=sonar_noroeste_1
-    - -tipo=sonar
+    - -id=visual_noroeste_1
+    - -tipo=visual
     - -setor=Setor_Noroeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -194,11 +194,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_radar_nordeste_3
+    container_name: hormuznet_sonar_nordeste_3
     network_mode: host
     command:
-    - -id=radar_nordeste_3
-    - -tipo=radar
+    - -id=sonar_nordeste_3
+    - -tipo=sonar
     - -setor=Setor_Nordeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -209,11 +209,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_visual_nordeste_4
+    container_name: hormuznet_radar_nordeste_4
     network_mode: host
     command:
-    - -id=visual_nordeste_4
-    - -tipo=visual
+    - -id=radar_nordeste_4
+    - -tipo=radar
     - -setor=Setor_Nordeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -224,11 +224,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_sonar_sudoeste_5
+    container_name: hormuznet_meteo_sudoeste_5
     network_mode: host
     command:
-    - -id=sonar_sudoeste_5
-    - -tipo=sonar
+    - -id=meteo_sudoeste_5
+    - -tipo=meteo
     - -setor=Setor_Sudoeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -239,11 +239,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_visual_sudoeste_6
+    container_name: hormuznet_boia_sudoeste_6
     network_mode: host
     command:
-    - -id=visual_sudoeste_6
-    - -tipo=visual
+    - -id=boia_sudoeste_6
+    - -tipo=boia
     - -setor=Setor_Sudoeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -254,11 +254,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_radar_sudeste_7
+    container_name: hormuznet_visual_sudeste_7
     network_mode: host
     command:
-    - -id=radar_sudeste_7
-    - -tipo=radar
+    - -id=visual_sudeste_7
+    - -tipo=visual
     - -setor=Setor_Sudeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -269,11 +269,11 @@ services:
     build:
       context: ./code
       dockerfile: Dockerfile.sensor
-    container_name: hormuznet_visual_sudeste_8
+    container_name: hormuznet_sonar_sudeste_8
     network_mode: host
     command:
-    - -id=visual_sudeste_8
-    - -tipo=visual
+    - -id=sonar_sudeste_8
+    - -tipo=sonar
     - -setor=Setor_Sudeste
     - -broker=224.1.2.3:9876
     - -intervalo=20000
@@ -291,7 +291,7 @@ services:
       COMPANY_NAME: Maersk
       COMPANY_ADDR: '0x280f33adb69caa3e5c8c'
       COMPANY_PRIV_KEY: 9bfb94f11c9b617fb14a2452f0e243759147ef9eb8bf60d7121787d4504eafa4
-      BROKER_API: http://localhost:7000
+      BROKER_API: http://localhost:7000,http://localhost:7001,http://localhost:7002,http://localhost:7003
       X: '150'
       Y: '750'
     restart: on-failure
@@ -306,7 +306,7 @@ services:
       COMPANY_NAME: MSC
       COMPANY_ADDR: '0x2a9621c924cf329f550a'
       COMPANY_PRIV_KEY: cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20
-      BROKER_API: http://localhost:7001
+      BROKER_API: http://localhost:7001,http://localhost:7000,http://localhost:7002,http://localhost:7003
       X: '650'
       Y: '750'
     restart: on-failure
@@ -321,7 +321,7 @@ services:
       COMPANY_NAME: CMA_CGM
       COMPANY_ADDR: '0x7daccdb0e3eb3ce3d768'
       COMPANY_PRIV_KEY: 682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7
-      BROKER_API: http://localhost:7002
+      BROKER_API: http://localhost:7002,http://localhost:7000,http://localhost:7001,http://localhost:7003
       X: '150'
       Y: '250'
     restart: on-failure
@@ -336,7 +336,7 @@ services:
       COMPANY_NAME: Hapag_Lloyd
       COMPANY_ADDR: '0xf7d808577df8b4454e18'
       COMPANY_PRIV_KEY: 303b1fa143cff773c69665a3891971bde28806c59ea2d4930f9fb8ac2c861a0a
-      BROKER_API: http://localhost:7003
+      BROKER_API: http://localhost:7003,http://localhost:7000,http://localhost:7001,http://localhost:7002
       X: '650'
       Y: '250'
     restart: on-failure

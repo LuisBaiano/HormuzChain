@@ -84,7 +84,7 @@ services:
     network_mode: host
     command:
     - -id=Drone_NW_1
-    - -brokers=127.0.0.1:6000
+    - -brokers=127.0.0.1:6000,127.0.0.1:6001,127.0.0.1:6002
     - -x=250
     - -y=750
     restart: on-failure
@@ -116,7 +116,7 @@ services:
       COMPANY_NAME: Maersk
       COMPANY_ADDR: '0x280f33adb69caa3e5c8c'
       COMPANY_PRIV_KEY: 9bfb94f11c9b617fb14a2452f0e243759147ef9eb8bf60d7121787d4504eafa4
-      BROKER_API: http://localhost:7000
+      BROKER_API: http://localhost:7000,http://localhost:7001,http://localhost:7002
       X: '150'
       Y: '750'
     restart: on-failure
@@ -132,7 +132,7 @@ services:
       COMPANY_NAME: Maersk
       COMPANY_ADDR: '0x280f33adb69caa3e5c8c'
       COMPANY_PRIV_KEY: 9bfb94f11c9b617fb14a2452f0e243759147ef9eb8bf60d7121787d4504eafa4
-      BROKER_API: http://localhost:7000
+      BROKER_API: http://localhost:7000,http://localhost:7001,http://localhost:7002
       X: '250'
       Y: '800'
     restart: on-failure
@@ -148,7 +148,7 @@ services:
       COMPANY_NAME: MSC
       COMPANY_ADDR: '0x2a9621c924cf329f550a'
       COMPANY_PRIV_KEY: cb93bbfc68a40806d3b48a97e60faa0df6959b127e677bb175a55267a73c5e20
-      BROKER_API: http://localhost:7001
+      BROKER_API: http://localhost:7001,http://localhost:7000,http://localhost:7002
       X: '650'
       Y: '750'
     restart: on-failure
@@ -164,7 +164,7 @@ services:
       COMPANY_NAME: CMA_CGM
       COMPANY_ADDR: '0x7daccdb0e3eb3ce3d768'
       COMPANY_PRIV_KEY: 682ea73bd47e2d0c34856edeb0b10de26f00e47ae654ff04d1a4e580fbcaede7
-      BROKER_API: http://localhost:7002
+      BROKER_API: http://localhost:7002,http://localhost:7000,http://localhost:7001
       X: '150'
       Y: '250'
     restart: on-failure

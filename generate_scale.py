@@ -46,16 +46,20 @@ def gerar_yaml_escala():
 
     # 4. 3 Drones requested
     drone_configs = [
-        {"id": "Drone_NW_1", "x": 250, "y": 750},
-        {"id": "Drone_NE_1", "x": 750, "y": 750},
-        {"id": "Drone_SW_1", "x": 250, "y": 250}
+        {"id": "Drone_NW_1", "x": 250, "y": 750, "primary_port": 6000},
+        {"id": "Drone_NE_1", "x": 750, "y": 750, "primary_port": 6001},
+        {"id": "Drone_SW_1", "x": 250, "y": 250, "primary_port": 6002}
     ]
+    all_broker_ports = [6000, 6001, 6002, 6003]
     for idx, d in enumerate(drone_configs):
+        primary = d["primary_port"]
+        ordered = [primary] + [p for p in all_broker_ports if p != primary]
+        brokers_str = ",".join(f"127.0.0.1:{p}" for p in ordered)
         services[f"drone{idx+1}"] = {
             "build": {"context": "./code", "dockerfile": "Dockerfile.drone"},
             "container_name": f"hormuznet_{d['id'].lower()}",
             "network_mode": "host",
-            "command": [f"-id={d['id']}", "-brokers=127.0.0.1:6000", f"-x={d['x']}", f"-y={d['y']}"],
+            "command": [f"-id={d['id']}", f"-brokers={brokers_str}", f"-x={d['x']}", f"-y={d['y']}"],
             "restart": "on-failure"
         }
 
@@ -128,10 +132,15 @@ def gerar_yaml_escala():
     ]
 
     vessel_idx = 0
+    all_api_ports = [7000, 7001, 7002, 7003]
     for comp_name, comp_info in empresas.items():
         for ship_num in [1, 2]:
             v_id = f"vessel_{comp_name.lower()}_0{ship_num}"
             coord = vessel_coords[vessel_idx]
+            
+            primary_port = int(coord["api"].split(":")[-1])
+            ordered_api_ports = [primary_port] + [p for p in all_api_ports if p != primary_port]
+            api_fallback_str = ",".join(f"http://localhost:{p}" for p in ordered_api_ports)
             
             services[f"vessel_{vessel_idx+1}"] = {
                 "build": {"context": "./code", "dockerfile": "Dockerfile.vessel"},
@@ -142,7 +151,7 @@ def gerar_yaml_escala():
                     "COMPANY_NAME": comp_name,
                     "COMPANY_ADDR": comp_info["addr"],
                     "COMPANY_PRIV_KEY": comp_info["priv"],
-                    "BROKER_API": coord["api"],
+                    "BROKER_API": api_fallback_str,
                     "X": str(coord["x"]),
                     "Y": str(coord["y"])
                 },

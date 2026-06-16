@@ -151,3 +151,4 @@ Este guia mapeia diretamente os critérios de avaliação descritos no Barema do
   * *Referências de Código:*
     * Bypass em Go: `GetLaudos` e `GetPaymentHistory` em [chain.go](file:///home/luis/Área de Trabalho/HormuzChain/code/internal/blockchain/chain.go#L503) (valida `companyAddr == "1234"`).
     * Bypass em JS: `revelarLaudo` e `revelarPagamento` em [monitor_main.go](file:///home/luis/Área de Trabalho/HormuzChain/code/cmd/monitor/monitor_main.go).
+
