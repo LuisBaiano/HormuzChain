@@ -36,6 +36,18 @@ header() {
 # Pegar o IP local (padrão)
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 
+# Descobrir porta ativa da API REST local para o CLI
+detect_active_broker() {
+    local active_api="http://localhost:7000"
+    for port in 7000 7001 7002 7003; do
+        if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${port}/occurrences" --max-time 1 | grep -q "200" 2>/dev/null; then
+            active_api="http://localhost:${port}"
+            break
+        fi
+    done
+    echo "$active_api"
+}
+
 while true; do
     header
     echo -e "\e[1;33mEscolha um componente para subir neste PC:\e[0m"
@@ -159,10 +171,11 @@ while true; do
         8)
             echo -e "\n\e[1;35m=> Consultar Saldo e Navios de Carteira\e[0m"
             read -p "Nome da empresa (ex: Maersk, MSC, CMA_CGM, Hapag_Lloyd) ou Endereço da carteira: " WALLET_IDENT
+            ACTIVE_BROKER_API=$(detect_active_broker)
             if [[ "$WALLET_IDENT" =~ ^0x ]]; then
-                ./hormuz_cli balance -addr "$WALLET_IDENT" -broker "http://localhost:7000"
+                ./hormuz_cli balance -addr "$WALLET_IDENT" -broker "$ACTIVE_BROKER_API"
             else
-                ./hormuz_cli balance -company "$WALLET_IDENT" -broker "http://localhost:7000"
+                ./hormuz_cli balance -company "$WALLET_IDENT" -broker "$ACTIVE_BROKER_API"
             fi
             read -p "Pressione Enter para continuar..."
             ;;
@@ -171,13 +184,15 @@ while true; do
             read -p "Empresa remetente (ex: Maersk, MSC, CMA_CGM, Hapag_Lloyd): " FROM_COMP
             read -p "Empresa destinatária (ex: MSC) ou endereço da carteira (0x...): " TO_COMP
             read -p "Quantidade de ELIS: " TRANSFER_AMOUNT
-            ./hormuz_cli transfer -from "$FROM_COMP" -to "$TO_COMP" -amount "$TRANSFER_AMOUNT" -broker "http://localhost:7000"
+            ACTIVE_BROKER_API=$(detect_active_broker)
+            ./hormuz_cli transfer -from "$FROM_COMP" -to "$TO_COMP" -amount "$TRANSFER_AMOUNT" -broker "$ACTIVE_BROKER_API"
             read -p "Pressione Enter para continuar..."
             ;;
         10)
             echo -e "\n\e[1;35m=> Registrar Nova Empresa\e[0m"
             read -p "Nome da nova empresa: " REG_NAME
-            ./hormuz_cli register -name "$REG_NAME" -broker "http://localhost:7000"
+            ACTIVE_BROKER_API=$(detect_active_broker)
+            ./hormuz_cli register -name "$REG_NAME" -broker "$ACTIVE_BROKER_API"
             read -p "Pressione Enter para continuar..."
             ;;
         11)
@@ -243,13 +258,7 @@ for c in companies:
             echo "Coordenadas geradas automaticamente: X=$VESSEL_X, Y=$VESSEL_Y"
 
             # Descobrir porta ativa da API REST para registro
-            ACTIVE_BROKER_API="http://localhost:7000"
-            for port in 7000 7001 7002 7003; do
-                if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${port}/occurrences" --max-time 1 | grep -q "200" 2>/dev/null; then
-                    ACTIVE_BROKER_API="http://localhost:${port}"
-                    break
-                fi
-            done
+            ACTIVE_BROKER_API=$(detect_active_broker)
 
             echo -e "\n=> Registrando navio $NEW_VESSEL_ID na Blockchain via $ACTIVE_BROKER_API..."
             ./hormuz_cli vessel-reg -company "$COMP_NAME" -vessel "$NEW_VESSEL_ID" -broker "$ACTIVE_BROKER_API"
