@@ -141,8 +141,6 @@ while true; do
         7)
             echo -e "\n\e[1;31m=> Parando e removendo todos os containers...\e[0m"
             $DOCKER_COMPOSE -f docker-compose-all.yml down --remove-orphans || true
-            $DOCKER_COMPOSE -f docker-compose-escala.yml down --remove-orphans || true
-            $DOCKER_COMPOSE -f docker-compose-minimal.yml down --remove-orphans || true
             if [ -f "docker-compose-dist.yml" ]; then
                 $DOCKER_COMPOSE -f docker-compose-dist.yml down --remove-orphans || true
             fi
