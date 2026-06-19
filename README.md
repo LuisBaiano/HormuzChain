@@ -10,85 +10,39 @@ Optamos por desenvolver todo o sistema em **Go 1.23** do zero, sem o uso de midd
 
 ```mermaid
 graph TB
-    subgraph SENSORS["🛰️ Camada de Sensores (UDP Multicast)"]
-        S1[Sensor Setor 1]
-        S2[Sensor Setor 2]
-        S3[Sensor Setor 3]
-        S4[Sensor Setor 4]
+    subgraph SENSORS["🛰️ Sensores (UDP Multicast)"]
+        S["S1 · S2 · S3 · S4"]
     end
 
-    subgraph POA["⛓️ Rede P2P — Brokers Validadores (PoA Round-Robin)"]
-        direction LR
-        B1["🖥️ Broker B1\nLedger chain_1.json"]
-        B2["🖥️ Broker B2\nLedger chain_2.json"]
-        B3["🖥️ Broker B3\nLedger chain_3.json"]
-        B4["🖥️ Broker B4\nLedger chain_4.json"]
-
-        B1 <-->|"Gossip TCP\n+ Heartbeat"| B2
-        B2 <-->|"Gossip TCP\n+ Heartbeat"| B3
-        B3 <-->|"Gossip TCP\n+ Heartbeat"| B4
-        B4 <-->|"Gossip TCP\n+ Heartbeat"| B1
-        B1 <-->|"Gossip TCP"| B3
-        B2 <-->|"Gossip TCP"| B4
+    subgraph POA["⛓️ Brokers Validadores — PoA Round-Robin"]
+        B1["B1"] <-->|Gossip TCP| B2["B2"]
+        B2 <-->|Gossip TCP| B3["B3"]
+        B3 <-->|Gossip TCP| B4["B4"]
+        B4 <-->|Gossip TCP| B1
     end
 
-    subgraph CONSENSUS["🗳️ Consenso PoA (por ciclo de bloco ~10s)"]
-        direction LR
-        P["Proponente\n(N mod 4)"]
-        Q["Quórum 3/4\nAssinaturas ECDSA"]
-        C["Commit\nFinalidade Imediata"]
-        P --> Q --> C
-    end
-
-    subgraph LEDGER["📒 Blockchain Compartilhada (4 réplicas)"]
-        G["Bloco Gênese\n(Mints ELIS)"]
-        BK1["Bloco N"]
-        BK2["Bloco N+1"]
-        BK3["Bloco N+2"]
-        G --> BK1 --> BK2 --> BK3
+    subgraph CHAIN["📒 Blockchain · 4 Réplicas Independentes"]
+        MEM["Mempool\nanti duplo-gasto"] --> CON["Consenso PoA\nQuórum 3/4 · ECDSA"] --> LED["Ledger\nchain_N.json"]
     end
 
     subgraph AGENTS["🚢 Agentes Autônomos"]
-        V1["Navio V1\nCarteira ECDSA"]
-        V2["Navio V2\nCarteira ECDSA"]
-        D1["🚁 Drone D1"]
-        D2["🚁 Drone D2"]
-        D3["🚁 Drone D3"]
-        D4["🚁 Drone D4"]
+        V["Navios V1–V4\ncarteira ECDSA"]
+        D["🚁 Drones D1–D8"]
     end
 
-    subgraph MONITOR["🖥️ Monitor & Explorer (WebSocket + REST)"]
-        MW["Painel Tático\nlocalhost:8085"]
-        EX["Blockchain Explorer\n🔒 Auditoria PIN 1234"]
-    end
+    LM["🔒 Lamport\nexclusão mútua"]
+    MON["🖥️ Monitor & Explorer\nlocalhost:8085"]
 
-    subgraph MUTEX["🔒 Exclusão Mútua Distribuída"]
-        LM["Algoritmo de Lamport\n(despacho de drones)"]
-    end
-
-    %% Fluxo de detecção
-    S1 & S2 & S3 & S4 -->|"Alerta UDP Multicast"| B1 & B2 & B3 & B4
-
-    %% Consenso interno dos brokers
-    POA --> CONSENSUS --> LEDGER
-
-    %% Navios submetem transações
-    V1 & V2 -->|"TxEscolta assinada\n(REST/TCP)"| B1
-
-    %% Exclusão mútua decide qual drone decola
-    B1 & B2 & B3 & B4 <-->|"Lamport msgs"| LM
-    LM -->|"Lock exclusivo"| D1 & D2 & D3 & D4
-
-    %% Drone decola após confirmação on-chain
-    LEDGER -->|"Status PAGO ✅"| D1 & D2 & D3 & D4
-    D1 & D2 & D3 & D4 -->|"TxMissionLog\n(geo + timestamp)"| B1
-
-    %% Monitor consome dados
-    B1 & B2 & B3 & B4 -->|"WebSocket / REST API"| MW & EX
-    V1 & V2 -->|"Posição AIS"| MW
+    S -->|Alerta| POA
+    V -->|TxEscolta assinada| POA
+    POA --> CHAIN
+    CHAIN -->|Status PAGO ✅| LM
+    LM -->|Lock exclusivo| D
+    D -->|TxMissionLog| POA
+    POA -->|WebSocket / REST| MON
 ```
 
-> **Fluxo Principal:** Sensor detecta ameaça → Broker difunde alerta → Navio assina `TxEscolta` → Mempool valida (saldo on-chain, duplo gasto) → Consenso PoA confirma bloco → Status vira `PAGO` → Lamport elege Drone → Drone decola e emite `TxMissionLog` → Ledger imortaliza missão.
+> **Fluxo:** Sensor → Broker → Mempool → Consenso PoA → Ledger → `PAGO` → Lamport → Drone decola → `TxMissionLog` imortalizada.
 
 ---
 
